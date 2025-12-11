@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:quick_chat/splash_screen.dart';
-import 'package:quick_chat/profile_setup_screen.dart';
-import 'package:quick_chat/otp_verification_screen.dart';
-import 'package:quick_chat/mobile_number_screen.dart';
+
+import 'mobile_number_screen.dart';
+import 'otp_verification_screen.dart';
+import 'profile_setup_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,13 +17,15 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Quick Chat',
 
+      // ایپ سب سے پہلے MobileNumberScreen سے شروع ہو گی
+      initialRoute: '/mobile',
+
       routes: {
         '/mobile': (_) => const MobileNumberScreen(),
         '/otp': (_) => const OTPVerificationScreen(),
         '/profile_setup': (_) => const ProfileSetupScreen(),
       },
-
-      home: const SplashScreen(),
     );
   }
 }
+```0
