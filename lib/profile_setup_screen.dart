@@ -1,11 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io'; // Required for File
-
-// Note: For this code to work, you must have the 'image_picker' package
-// added to your pubspec.yaml file and run 'flutter pub get'.
-// Also, ensure you have set up the necessary platform permissions (iOS/Android)
-// for camera and gallery access.
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -15,25 +11,17 @@ class ProfileSetupScreen extends StatefulWidget {
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
-  // --- State Variables for Data ---
   final TextEditingController _nameController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+
   String? _nameError;
   bool _isProvider = false; // false = buyer, true = provider
 
-  // --- State Variables for Image Files ---
-  File? _profileImageFile;
-  File? _cnicFrontFile;
-  File? _cnicBackFile;
-
-  // --- Utility for Image Picking ---
-  final ImagePicker _picker = ImagePicker();
-
-  @override
-  void initState() {
-    super.initState();
-    // Listen to name changes to update button state
-    _nameController.addListener(_updateButtonState);
-  }
+  // Image state
+  XFile? _profileImage;
+  XFile? _cnicFrontImage;
+  XFile? _cnicBackImage;
+  XFile? _selfieImage;
 
   @override
   void dispose() {
@@ -41,98 +29,99 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     super.dispose();
   }
 
-  // --- Core Logic: Check if Submission is Ready ---
-  bool get _isSubmissionReady {
-    final bool nameValid = _nameController.text.trim().isNotEmpty;
+  bool get _isFormValid {
+    final hasName = _nameController.text.trim().isNotEmpty;
+    final hasProfile = _profileImage != null;
 
+    if (!hasName || !hasProfile) return false;
+
+    // Provider: must have all three live photos
     if (_isProvider) {
-      // Provider requires Name, Profile Pic, CNIC Front, and CNIC Back
-      return nameValid &&
-          _profileImageFile != null &&
-          _cnicFrontFile != null &&
-          _cnicBackFile != null;
-    } else {
-      // Buyer only requires Name
-      return nameValid;
+      return _cnicFrontImage != null &&
+          _cnicBackImage != null &&
+          _selfieImage != null;
     }
+
+    // Buyer: only name + profile picture
+    return true;
   }
 
-  // --- Method to Trigger State Update ---
-  void _updateButtonState() {
-    // Calling setState() with no arguments forces the widget to rebuild,
-    // which updates the button's enabled/disabled state based on _isSubmissionReady.
-    // This is efficient as it only rebuilds the necessary widgets (like the button).
-    setState(() {
-      // This empty setState block is necessary to trigger the rebuild
-    });
-  }
-
-  // --- Method for Picking Images ---
-  Future<void> _pickImage(
-      {required ImageSource source, required Function(File) onFilePicked}) async {
+  Future<void> _pickProfileImage() async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: source,
-        maxWidth: 800, // Optimize image size for performance
-        imageQuality: 75, // Reduce quality for faster network transmission later
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        imageQuality: 70, // small size for low RAM / slow network
       );
-
-      if (pickedFile != null) {
-        onFilePicked(File(pickedFile.path));
-        _updateButtonState(); // Update button state after picking a required image
+      if (image != null) {
+        setState(() {
+          _profileImage = image;
+        });
       }
     } catch (e) {
-      // Handle permission errors or other exceptions
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e')),
-        );
-      }
+      _showError('Failed to pick profile picture');
     }
   }
 
-  // --- Submission Handler ---
-  void _onSubmit() {
-    setState(() {
-      if (_nameController.text.trim().isEmpty) {
-        _nameError = 'Name is required';
-      } else {
-        _nameError = null;
-      }
-    });
+  Future<void> _captureCnicFront() async {
+    await _captureWithCamera(
+      onCaptured: (img) => _cnicFrontImage = img,
+      errorMessage: 'Failed to capture CNIC front side',
+    );
+  }
 
-    if (!_isSubmissionReady) {
-      // Should not happen if button is disabled correctly, but good for safety
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete all required fields.')),
+  Future<void> _captureCnicBack() async {
+    await _captureWithCamera(
+      onCaptured: (img) => _cnicBackImage = img,
+      errorMessage: 'Failed to capture CNIC back side',
+    );
+  }
+
+  Future<void> _captureSelfie() async {
+    await _captureWithCamera(
+      onCaptured: (img) => _selfieImage = img,
+      errorMessage: 'Failed to capture selfie',
+    );
+  }
+
+  Future<void> _captureWithCamera({
+    required void Function(XFile img) onCaptured,
+    required String errorMessage,
+  }) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        imageQuality: 70,
       );
-      return;
+      if (image != null) {
+        setState(() {
+          onCaptured(image);
+        });
+      }
+    } catch (e) {
+      _showError(errorMessage);
     }
+  }
 
-    // --- Actual Logic Placeholder ---
-    // In a real app, you would upload files to the server here.
+  void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isProvider
-              ? 'Profile data and images collected. Submitting for review...'
-              : 'Profile data collected. Going to application...',
-        ),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Full background gradient container
+      // Full background gradient
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFFE0F7FA), // Light Cyan
-              Color(0xFFC8E6C9), // Light Green
-              Color(0xFFFFF9C4), // Light Yellow
+              Color(0xFFE0F7FA),
+              Color(0xFFC8E6C9),
+              Color(0xFFFFF9C4),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -141,11 +130,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: SingleChildScrollView(
-          // For better performance on low-end devices, use minimal padding/decoration
-          // within the SingleChildScrollView and keep image sizes optimized.
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
+              constraints: const BoxConstraints(maxWidth: 320),
               child: _buildCard(context),
             ),
           ),
@@ -179,7 +166,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const Text(
             '👤 Profile Setup',
             style: TextStyle(
-              color: Color(0xFF3F51B5), // Indigo
+              color: Color(0xFF3F51B5),
               fontSize: 24,
               fontWeight: FontWeight.w700,
             ),
@@ -189,19 +176,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const Text(
             'Complete your profile and choose your user type.',
             style: TextStyle(
-              color: Color(0xFF90A4AE), // Blue Grey
+              color: Color(0xFF90A4AE),
               fontSize: 13,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 25),
 
-          // --- Profile Picture Upload ---
+          // Profile picture
           GestureDetector(
-            onTap: () => _pickImage(
-              source: ImageSource.gallery,
-              onFilePicked: (file) => setState(() => _profileImageFile = file),
-            ),
+            onTap: _pickProfileImage,
             child: Column(
               children: [
                 Container(
@@ -210,9 +194,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: _profileImageFile != null
-                          ? const Color(0xFF00C853) // Green for uploaded
-                          : const Color(0xFFCFD8DC), // Light Grey
+                      color: const Color(0xFFCFD8DC),
                       width: 3,
                     ),
                     boxShadow: const [
@@ -224,12 +206,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     ],
                   ),
                   child: ClipOval(
-                    child: _profileImageFile != null
+                    child: _profileImage != null
                         ? Image.file(
-                            _profileImageFile!,
+                            File(_profileImage!.path),
                             fit: BoxFit.cover,
-                            cacheHeight: 180, // Optimized for smooth display
-                            cacheWidth: 180,
                           )
                         : const Image(
                             fit: BoxFit.cover,
@@ -240,14 +220,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _profileImageFile != null
-                      ? 'Change Profile Picture'
-                      : 'Upload Profile Picture',
-                  style: const TextStyle(
+                const Text(
+                  'Upload Profile Picture',
+                  style: TextStyle(
                     color: Color(0xFF3F51B5),
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -256,10 +233,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
           const SizedBox(height: 20),
 
-          // --- Name Input Field ---
+          // Name input
           TextField(
             controller: _nameController,
-            onChanged: (value) => _updateButtonState(), // Call update on text change
+            onChanged: (_) {
+              setState(() {
+                if (_nameController.text.trim().isEmpty) {
+                  _nameError = 'Name is required';
+                } else {
+                  _nameError = null;
+                }
+              });
+            },
             decoration: InputDecoration(
               hintText: 'Profile Name',
               filled: true,
@@ -281,9 +266,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               errorText: _nameError,
             ),
           ),
+          const SizedBox(height: 5),
+          if (_nameError != null)
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Name is required',
+                style: TextStyle(
+                  color: Color(0xFFFF5252),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           const SizedBox(height: 15),
 
-          // --- User Type Selector Buttons ---
+          // User type buttons
           Row(
             children: [
               Expanded(
@@ -293,27 +291,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   selected: _isProvider,
                   onTap: () {
                     setState(() => _isProvider = true);
-                    _updateButtonState(); // Update state when type changes
                   },
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _buildTypeButton(
-                  label: "I’m a Service buyer",
+                  label: "I’m a Service Buyer",
                   icon: Icons.handshake,
                   selected: !_isProvider,
                   onTap: () {
                     setState(() => _isProvider = false);
-                    _updateButtonState(); // Update state when type changes
                   },
                 ),
               ),
             ],
           ),
 
-          // --- Provider Upload Section (Animated Visibility) ---
           const SizedBox(height: 10),
+
+          // Provider upload section
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 250),
             crossFadeState: _isProvider
@@ -325,40 +322,55 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
           const SizedBox(height: 20),
 
-          // --- Final Submission Button ---
+          // Final button
           SizedBox(
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: _isSubmissionReady ? _onSubmit : null, // Disabled if not ready
+              onPressed: _isFormValid ? _onSubmit : null,
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-                elevation: 8,
+                elevation: _isFormValid ? 8 : 0,
+                backgroundColor:
+                    _isFormValid ? Colors.transparent : const Color(0xFFBDBDBD),
+                foregroundColor: Colors.white,
+                shadowColor:
+                    _isFormValid ? Colors.black26 : Colors.transparent,
               ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: _isSubmissionReady
-                      ? const LinearGradient(
-                          colors: [Color(0xFF00C853), Color(0xFF00E676)], // Green Gradient
-                        )
-                      : null, // No gradient when disabled
-                  color: _isSubmissionReady ? null : const Color(0xFFBDBDBD), // Grey when disabled
-                  borderRadius: const BorderRadius.all(Radius.circular(10)),
-                ),
-                child: Center(
-                  child: Text(
-                    _isProvider ? 'Submit for Review' : 'Go To Application',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+              child: _isFormValid
+                  ? Ink(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF00C853), Color(0xFF00E676)],
+                        ),
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          _isProvider
+                              ? 'Submit for Review'
+                              : 'Go To Application',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    )
+                  : const Center(
+                      child: Text(
+                        'Complete Profile First',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
             ),
           ),
         ],
@@ -429,49 +441,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           style: TextStyle(
             color: Color(0xFF3F51B5),
             fontSize: 13,
-            fontWeight: FontWeight.w600,
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 15),
 
-        // CNIC Front Side
-        _buildUploadCard(
-          icon: Icons.credit_card,
-          title: 'CNIC Front Side',
-          subtitle: '(Tap to take Live Photo)',
-          file: _cnicFrontFile,
-          onTap: () => _pickImage(
-            source: ImageSource.camera, // Live camera for CNIC
-            onFilePicked: (file) => setState(() => _cnicFrontFile = file),
-          ),
-        ),
-        const SizedBox(height: 15),
-
-        // CNIC Back Side
-        _buildUploadCard(
-          icon: Icons.credit_card,
-          title: 'CNIC Back Side',
-          subtitle: '(Tap to take Live Photo)',
-          file: _cnicBackFile,
-          onTap: () => _pickImage(
-            source: ImageSource.camera, // Live camera for CNIC
-            onFilePicked: (file) => setState(() => _cnicBackFile = file),
-          ),
-        ),
-        const SizedBox(height: 15),
-
-        // Live Selfie
-        _buildUploadCard(
-          icon: Icons.camera_alt,
-          title: 'Live Selfie',
-          subtitle: '(Tap to take Live Photo)',
-          circularPreview: true,
-          file: _profileImageFile, // Reusing profile pic variable for consistency
-          onTap: () => _pickImage(
-            source: ImageSource.camera, // Live camera for Selfie
-            onFilePicked: (file) => setState(() => _profileImageFile = file),
-          ),
+        Column(
+          children: [
+            _buildUploadCard(
+              icon: Icons.credit_card,
+              title: 'CNIC Front Side',
+              subtitle: '(Tap to take live photo)',
+              image: _cnicFrontImage,
+              onTap: _captureCnicFront,
+            ),
+            const SizedBox(height: 15),
+            _buildUploadCard(
+              icon: Icons.credit_card,
+              title: 'CNIC Back Side',
+              subtitle: '(Tap to take live photo)',
+              image: _cnicBackImage,
+              onTap: _captureCnicBack,
+            ),
+            const SizedBox(height: 15),
+            _buildUploadCard(
+              icon: Icons.camera_alt,
+              title: 'Live Selfie',
+              subtitle: '(Tap to take live photo)',
+              circularPreview: true,
+              image: _selfieImage,
+              onTap: _captureSelfie,
+            ),
+          ],
         ),
       ],
     );
@@ -482,11 +483,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
-    File? file,
+    XFile? image,
     bool circularPreview = false,
   }) {
-    final bool uploaded = file != null;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -495,14 +494,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-              color: uploaded ? const Color(0xFF00C853) : const Color(0xFFBDBDBD),
-              width: uploaded ? 3 : 1),
-          boxShadow: [
+          border: Border.all(color: const Color(0xFFBDBDBD), width: 2),
+          boxShadow: const [
             BoxShadow(
-              color: uploaded ? const Color.fromARGB(77, 0, 200, 83) : Colors.black12,
+              color: Colors.black12,
               blurRadius: 5,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -511,15 +508,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             Icon(
               icon,
               size: 30,
-              color: uploaded ? const Color(0xFF00C853) : const Color(0xFF3F51B5),
+              color: const Color(0xFF3F51B5),
             ),
             const SizedBox(height: 5),
             Text(
-              uploaded ? '$title (Uploaded)' : title,
-              style: TextStyle(
+              title,
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: uploaded ? const Color(0xFF00C853) : const Color(0xFF616161),
+                color: Color(0xFF616161),
               ),
             ),
             Text(
@@ -529,85 +526,95 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 color: Color(0xFF90A4AE),
               ),
             ),
-            const SizedBox(height: 10),
-            // Dynamic Preview
-            if (uploaded)
-              _buildFilePreview(file!, circularPreview)
-            else
-              // Placeholder Preview
-              circularPreview
-                  ? Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFEEEEEE),
-                          width: 4,
+            const SizedBox(height: 6),
+            if (!circularPreview)
+              Container(
+                height: 100,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(color: const Color(0xFFEEEEEE)),
+                  color: const Color(0xFFF9F9F9),
+                ),
+                child: image != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.file(
+                          File(image.path),
+                          fit: BoxFit.cover,
                         ),
-                        color: const Color(0xFFF9F9F9),
+                      )
+                    : const Center(
+                        child: Text(
+                          'No image captured',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFFB0BEC5),
+                          ),
+                        ),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.add_a_photo,
-                            color: Color(0xFFBDBDBD), size: 30),
-                      ),
-                    )
-                  : Container(
-                      height: 100,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        border: Border.all(color: const Color(0xFFEEEEEE)),
-                        color: const Color(0xFFF9F9F9),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.add_a_photo,
-                            color: Color(0xFFBDBDBD), size: 30),
-                      ),
+              )
+            else
+              Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF00C853),
+                    width: 4,
+                  ),
+                  color: const Color(0xFFF9F9F9),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromARGB(77, 0, 200, 83),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
                     ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: image != null
+                      ? Image.file(
+                          File(image.path),
+                          fit: BoxFit.cover,
+                        )
+                      : const Center(
+                          child: Icon(
+                            Icons.person,
+                            size: 30,
+                            color: Color(0xFFB0BEC5),
+                          ),
+                        ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  // Helper method for image preview
-  Widget _buildFilePreview(File file, bool circular) {
-    // Using a ClipOval or ClipRRect for better performance and aesthetic
-    final imageWidget = Image.file(
-      file,
-      fit: BoxFit.cover,
-      cacheHeight: 200, // Optimize file size for display
-      cacheWidth: circular ? 200 : 800,
+  void _onSubmit() {
+    setState(() {
+      if (_nameController.text.trim().isEmpty) {
+        _nameError = 'Name is required';
+      } else {
+        _nameError = null;
+      }
+    });
+
+    if (!_isFormValid) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isProvider
+              ? 'Profile submitted for review!'
+              : 'Profile completed, going to app...',
+        ),
+      ),
     );
 
-    return circular
-        ? Container(
-            width: 90,
-            height: 90,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: const Color(0xFF00C853),
-                width: 4,
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color.fromARGB(77, 0, 200, 83),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipOval(child: imageWidget),
-          )
-        : ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: Container(
-              height: 100,
-              width: double.infinity,
-              child: imageWidget,
-            ),
-          );
+    // Here you can navigate to next screen or call API when backend is ready.
   }
 }
