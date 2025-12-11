@@ -1,152 +1,159 @@
-// lib/mobile_number_screen.dart
 import 'package:flutter/material.dart';
-import 'otp_verification_screen.dart';
 
-class MobileNumberScreen extends StatefulWidget {
-  const MobileNumberScreen({Key? key}) : super(key: key);
+// اسکرین شاٹ کے مطابق Bottom Navigation Bar کے ساتھ نئی Chats Screen
+class ChatsScreen extends StatefulWidget {
+  const ChatsScreen({super.key});
 
   @override
-  State<MobileNumberScreen> createState() => _MobileNumberScreenState();
+  State<ChatsScreen> createState() => _ChatsScreenState();
 }
 
-class _MobileNumberScreenState extends State<MobileNumberScreen> {
-  final TextEditingController _phoneController = TextEditingController();
-  String? _phoneError;
+class _ChatsScreenState extends State<ChatsScreen> {
+  // 0 = Chats (Default/Selected as per screenshot)
+  // 1 = Call History
+  // 2 = My Session
+  // 3 = Profile
+  int _selectedIndex = 0; 
 
-  void _onContinue() {
+  // Bottom Navigation Bar Items کی تفصیلات
+  final List<Map<String, dynamic>> _navItems = [
+    {'icon': Icons.chat_bubble, 'label': 'Chats', 'index': 0},
+    {'icon': Icons.call, 'label': 'Call History', 'index': 1},
+    {'icon': Icons.assignment, 'label': 'My Session', 'index': 2}, // Icons.assignment for 'My Session' is a guess
+    {'icon': Icons.person, 'label': 'Profile', 'index': 3},
+  ];
+
+  void _onItemTapped(int index) {
     setState(() {
-      _phoneError = null;
-      final phone = _phoneController.text.trim();
-      if (phone.isEmpty) {
-        _phoneError = 'Mobile number ضروری ہے';
-      } else if (phone.length < 10) {
-        _phoneError = 'درست موبائل نمبر درج کریں';
-      }
+      _selectedIndex = index;
     });
-
-    if (_phoneError != null) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const OTPVerificationScreen(),
-      ),
-    );
+    // یہاں آپ مطلوبہ اسکرین پر نیویگیٹ کرنے کی لاجک شامل کر سکتے ہیں۔
+    // فی الحال، صرف منتخب آئیکن کا رنگ تبدیل ہوگا۔
+    print('Tapped on index $index: ${_navItems[index]['label']}');
   }
 
   @override
   Widget build(BuildContext context) {
+    // Scaffold میں مطلوبہ ڈیزائن لاگو کیا گیا ہے
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFFE0F7FA),
-              Color(0xFFC8E6C9),
-              Color(0xFFFFF9C4),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+      appBar: AppBar(
+        // نیویگیشن بار کے مطابق Menu آئیکن (☰)
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            // TODO: Drawer یا Menu ایکشن
+          },
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 320),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 20,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '📱 Quick Chat',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF3F51B5),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'اپنا موبائل نمبر درج کریں تاکہ ہم آپ کو OTP بھیج سکیں۔',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF90A4AE),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Mobile Number',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
-                  TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      hintText: '03xx xxxxxxx',
-                      prefixText: '+92 ',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      errorText: _phoneError,
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _onContinue,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00C853),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 5,
-                      ),
-                      child: const Text(
-                        'Continue',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        title: const Text('Chats'),
+        centerTitle: true,
+        // نیویگیشن بار کے مطابق Wallet/Folder آئیکن
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.folder), // Icons.folder is a guess for the yellow icon
+            onPressed: () {
+              // TODO: Wallet/Folder ایکشن
+            },
           ),
+          const SizedBox(width: 8),
+        ],
+        backgroundColor: Colors.white,
+        elevation: 0, // اسکرین شاٹ میں کوئی شیڈو نہیں دکھایا گیا
+      ),
+      // اسکرین شاٹ کے مطابق درمیان میں خالی جگہ
+      body: const Center(
+        child: Text('Chats Content Goes Here'),
+      ),
+      
+      // بڑا گرین بٹن (پلس آئیکن)
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // TODO: نیا چیٹ شروع کرنے کا ایکشن
+        },
+        backgroundColor: Colors.green,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
+      ),
+      // بٹن کو نیویگیشن بار کے اوپر لانے کے لیے
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      
+      // Bottom Navigation Bar
+      bottomNavigationBar: BottomAppBar(
+        color: Colors.white,
+        elevation: 10,
+        height: 60,
+        // ایک خالی جگہ چھوڑیں جہاں Floating Action Button فٹ ہو
+        notchMargin: 6.0,
+        shape: const CircularNotchedRectangle(), 
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: _navItems.map((item) {
+            // Chats اور Profile کے درمیان FloatingActionButton کی جگہ خالی کرنی ہوگی۔
+            if (item['index'] == 2) {
+               return const SizedBox(width: 40); // Floating Action Button کے لیے خالی جگہ
+            }
+
+            return _buildNavItem(
+              icon: item['icon'],
+              label: item['label'],
+              isSelected: item['index'] == _selectedIndex,
+              onTap: () => _onItemTapped(item['index']),
+            );
+          }).toList(),
         ),
       ),
     );
   }
+
+  // نیویگیشن بار میں ایک آئٹم بنانے کے لیے مددگار ویجیٹ
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    // اسکرین شاٹ کے مطابق منتخب آئیکن گرین، غیر منتخب آئیکن گرے
+    final Color color = isSelected ? Colors.green.shade700 : Colors.grey.shade600;
+
+    return InkWell(
+      onTap: onTap,
+      // رنگین آئیکن پر خاص توجہ
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 24,
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+// اگر آپ اس کلاس کو main.dart میں استعمال کرنا چاہتے ہیں، تو آپ کو
+// ProfileSetupScreen کی جگہ ChatsScreen کو کال کرنا پڑے گا:
+// void main() {
+//   runApp(const MyApp());
+// }
+// 
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+// 
+//   @override
+//   Widget build(BuildContext context) {
+//     return const MaterialApp(
+//       title: 'App Demo',
+//       home: ChatsScreen(), // <-- یہاں تبدیلی کی گئی ہے
+//     );
+//   }
+// }
