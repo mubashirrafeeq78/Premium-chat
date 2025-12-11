@@ -2,7 +2,7 @@ name: Deploy Flutter Web to GitHub Pages
 
 on:
   push:
-    branches: [ temp ]   # اگر آپ main برانچ استعمال کریں تو temp کی جگہ main لکھ دیں
+    branches: [ main ]   # اب workflow main پر چلتا ہے
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web
-        run: flutter build web --release --base-href="/Quick-Chatb/"
+        run: flutter build web --release --base-href="/Premium-chat/"
 
       - name: Upload build as Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -43,6 +43,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
