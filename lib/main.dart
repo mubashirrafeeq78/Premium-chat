@@ -4,27 +4,7 @@ import 'package:flutter/material.dart';
 import 'mobile_number_screen.dart';
 import 'otp_verification_screen.dart';
 import 'profile_setup_screen.dart';
-
-// Temporary Home Screen (You will replace this later)
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Home Screen"),
-        centerTitle: true,
-      ),
-      body: const Center(
-        child: Text(
-          "Welcome to Premium Chat!",
-          style: TextStyle(fontSize: 18),
-        ),
-      ),
-    );
-  }
-}
+import 'home_screen.dart'; // ✅ new home screen
 
 void main() {
   runApp(const MyApp());
@@ -39,7 +19,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Premium Chat',
 
-      // Starting Screen
+      // Starting screen
       initialRoute: '/mobile',
 
       routes: {
@@ -47,7 +27,7 @@ class MyApp extends StatelessWidget {
         '/otp': (context) => OTPVerificationScreen(),
         '/profile_setup': (context) => ProfileSetupScreen(),
 
-        // Home route for redirect after profile setup
+        // Home route after profile setup
         '/home': (context) => const HomeScreen(),
       },
     );
