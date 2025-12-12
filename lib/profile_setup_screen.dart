@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -116,6 +115,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -129,14 +129,23 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
-                child: _buildCard(context),
-              ),
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 48,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: _buildCard(context),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -148,7 +157,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       decoration: BoxDecoration(
-        color: Colors.white, // plain white card, no extra gradient bands
+        color: Colors.white, // صاف سفید کارڈ
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
@@ -181,6 +190,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
           const SizedBox(height: 24),
 
+          // Profile picture
           GestureDetector(
             onTap: _pickProfileImage,
             child: Column(
@@ -232,6 +242,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
           const SizedBox(height: 20),
 
+          // Name
           TextField(
             controller: _nameController,
             onChanged: (_) {
@@ -261,24 +272,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(color: Color(0xFF3F51B5)),
               ),
-              errorText: _nameError,
+              errorText: _nameError, // صرف ایک جگہ error text
             ),
           ),
-          const SizedBox(height: 5),
-          if (_nameError != null)
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Name is required',
-                style: TextStyle(
-                  color: Color(0xFFFF5252),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
           const SizedBox(height: 15),
 
+          // User type buttons
           Row(
             children: [
               Expanded(
@@ -318,6 +317,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
           const SizedBox(height: 20),
 
+          // Final button
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -597,17 +597,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     if (!_isFormValid) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isProvider
-              ? 'Profile submitted for review!'
-              : 'Profile completed, going to app...',
-        ),
-      ),
-    );
-
-    // Redirect to home screen (define /home route in main.dart).
+    // یہاں آپ API/Backend لگائیں گے، فی الحال سیدھا ہوم پر جا رہے ہیں
     Navigator.of(context).pushReplacementNamed('/home');
   }
 }
