@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,13 +15,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final ImagePicker _picker = ImagePicker();
 
   String? _nameError;
-  bool _isProvider = false; // false = buyer, true = provider
+  bool _isProvider = false;
 
-  // Image state
-  XFile? _profileImage;
-  XFile? _cnicFrontImage;
-  XFile? _cnicBackImage;
-  XFile? _selfieImage;
+  Uint8List? _profileImage;
+  Uint8List? _cnicFrontImage;
+  Uint8List? _cnicBackImage;
+  Uint8List? _selfieImage;
 
   @override
   void dispose() {
@@ -35,14 +34,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     if (!hasName || !hasProfile) return false;
 
-    // Provider: must have all three live photos
     if (_isProvider) {
       return _cnicFrontImage != null &&
           _cnicBackImage != null &&
           _selfieImage != null;
     }
 
-    // Buyer: only name + profile picture
     return true;
   }
 
@@ -51,41 +48,43 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1024,
-        imageQuality: 70, // small size for low RAM / slow network
+        imageQuality: 70,
       );
       if (image != null) {
+        final bytes = await image.readAsBytes();
+        if (!mounted) return;
         setState(() {
-          _profileImage = image;
+          _profileImage = bytes;
         });
       }
-    } catch (e) {
+    } catch (_) {
       _showError('Failed to pick profile picture');
     }
   }
 
   Future<void> _captureCnicFront() async {
-    await _captureWithCamera(
-      onCaptured: (img) => _cnicFrontImage = img,
+    await _captureFromCamera(
+      thenSaveTo: (bytes) => _cnicFrontImage = bytes,
       errorMessage: 'Failed to capture CNIC front side',
     );
   }
 
   Future<void> _captureCnicBack() async {
-    await _captureWithCamera(
-      onCaptured: (img) => _cnicBackImage = img,
+    await _captureFromCamera(
+      thenSaveTo: (bytes) => _cnicBackImage = bytes,
       errorMessage: 'Failed to capture CNIC back side',
     );
   }
 
   Future<void> _captureSelfie() async {
-    await _captureWithCamera(
-      onCaptured: (img) => _selfieImage = img,
+    await _captureFromCamera(
+      thenSaveTo: (bytes) => _selfieImage = bytes,
       errorMessage: 'Failed to capture selfie',
     );
   }
 
-  Future<void> _captureWithCamera({
-    required void Function(XFile img) onCaptured,
+  Future<void> _captureFromCamera({
+    required void Function(Uint8List bytes) thenSaveTo,
     required String errorMessage,
   }) async {
     try {
@@ -95,11 +94,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         imageQuality: 70,
       );
       if (image != null) {
+        final bytes = await image.readAsBytes();
+        if (!mounted) return;
         setState(() {
-          onCaptured(image);
+          thenSaveTo(bytes);
         });
       }
-    } catch (e) {
+    } catch (_) {
       _showError(errorMessage);
     }
   }
@@ -114,7 +115,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Full background gradient
+      backgroundColor: Colors.transparent,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -127,13 +128,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: SingleChildScrollView(
+        child: SafeArea(
           child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
-              child: _buildCard(context),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: _buildCard(context),
+              ),
             ),
           ),
         ),
@@ -144,13 +146,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Widget _buildCard(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 30),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Colors.white, Color(0xFFF0F0F0)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white, // plain white card, no extra gradient bands
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
@@ -181,16 +179,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 24),
 
-          // Profile picture
           GestureDetector(
             onTap: _pickProfileImage,
             child: Column(
               children: [
                 Container(
-                  width: 90,
-                  height: 90,
+                  width: 96,
+                  height: 96,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
@@ -207,14 +204,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
                   child: ClipOval(
                     child: _profileImage != null
-                        ? Image.file(
-                            File(_profileImage!.path),
+                        ? Image.memory(
+                            _profileImage!,
                             fit: BoxFit.cover,
                           )
-                        : const Image(
-                            fit: BoxFit.cover,
-                            image: NetworkImage(
-                              'https://via.placeholder.com/90?text=Pic',
+                        : Container(
+                            color: const Color(0xFFE0E0E0),
+                            child: const Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Color(0xFF9E9E9E),
                             ),
                           ),
                   ),
@@ -233,7 +232,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
           const SizedBox(height: 20),
 
-          // Name input
           TextField(
             controller: _nameController,
             onChanged: (_) {
@@ -281,7 +279,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ),
           const SizedBox(height: 15),
 
-          // User type buttons
           Row(
             children: [
               Expanded(
@@ -310,7 +307,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
           const SizedBox(height: 10),
 
-          // Provider upload section
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 250),
             crossFadeState: _isProvider
@@ -322,7 +318,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
           const SizedBox(height: 20),
 
-          // Final button
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -445,34 +440,31 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 15),
-
-        Column(
-          children: [
-            _buildUploadCard(
-              icon: Icons.credit_card,
-              title: 'CNIC Front Side',
-              subtitle: '(Tap to take live photo)',
-              image: _cnicFrontImage,
-              onTap: _captureCnicFront,
-            ),
-            const SizedBox(height: 15),
-            _buildUploadCard(
-              icon: Icons.credit_card,
-              title: 'CNIC Back Side',
-              subtitle: '(Tap to take live photo)',
-              image: _cnicBackImage,
-              onTap: _captureCnicBack,
-            ),
-            const SizedBox(height: 15),
-            _buildUploadCard(
-              icon: Icons.camera_alt,
-              title: 'Live Selfie',
-              subtitle: '(Tap to take live photo)',
-              circularPreview: true,
-              image: _selfieImage,
-              onTap: _captureSelfie,
-            ),
-          ],
+        _buildUploadCard(
+          icon: Icons.credit_card,
+          title: 'CNIC Front Side',
+          subtitle: '(Tap to take live photo)',
+          image: _cnicFrontImage,
+          circularPreview: false,
+          onTap: _captureCnicFront,
+        ),
+        const SizedBox(height: 15),
+        _buildUploadCard(
+          icon: Icons.credit_card,
+          title: 'CNIC Back Side',
+          subtitle: '(Tap to take live photo)',
+          image: _cnicBackImage,
+          circularPreview: false,
+          onTap: _captureCnicBack,
+        ),
+        const SizedBox(height: 15),
+        _buildUploadCard(
+          icon: Icons.camera_alt,
+          title: 'Live Selfie',
+          subtitle: '(Tap to take live photo)',
+          image: _selfieImage,
+          circularPreview: true,
+          onTap: _captureSelfie,
         ),
       ],
     );
@@ -483,7 +475,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
-    XFile? image,
+    Uint8List? image,
     bool circularPreview = false,
   }) {
     return GestureDetector(
@@ -526,7 +518,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 color: Color(0xFF90A4AE),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             if (!circularPreview)
               Container(
                 height: 100,
@@ -539,8 +531,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 child: image != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: Image.file(
-                          File(image.path),
+                        child: Image.memory(
+                          image,
                           fit: BoxFit.cover,
                         ),
                       )
@@ -575,8 +567,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 ),
                 child: ClipOval(
                   child: image != null
-                      ? Image.file(
-                          File(image.path),
+                      ? Image.memory(
+                          image,
                           fit: BoxFit.cover,
                         )
                       : const Center(
@@ -615,6 +607,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
     );
 
-    // Here you can navigate to next screen or call API when backend is ready.
+    // Redirect to home screen (define /home route in main.dart).
+    Navigator.of(context).pushReplacementNamed('/home');
   }
 }
