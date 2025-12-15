@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:quick_chat/splash_screen.dart';
-import 'package:quick_chat/profile_setup_screen.dart';
-import 'package:quick_chat/otp_verification_screen.dart';
-import 'package:quick_chat/mobile_number_screen.dart';
+
+// Local screens
+import 'mobile_number_screen.dart';
+import 'otp_verification_screen.dart';
+import 'profile_setup_screen.dart';
+import 'home_screen.dart'; // ✅ new home screen
 
 void main() {
   runApp(const MyApp());
@@ -15,15 +17,19 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Quick Chat',
+      title: 'Premium Chat',
+
+      // Starting screen
+      initialRoute: '/mobile',
 
       routes: {
-        '/mobile': (_) => const MobileNumberScreen(),
-        '/otp': (_) => const OTPVerificationScreen(),
-        '/profile_setup': (_) => const ProfileSetupScreen(),
-      },
+        '/mobile': (context) => MobileNumberScreen(),
+        '/otp': (context) => OTPVerificationScreen(),
+        '/profile_setup': (context) => ProfileSetupScreen(),
 
-      home: const SplashScreen(),
+        // Home route after profile setup
+        '/home': (context) => const HomeScreen(),
+      },
     );
   }
 }
