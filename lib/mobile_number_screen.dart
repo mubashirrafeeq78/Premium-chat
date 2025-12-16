@@ -1,144 +1,137 @@
-// lib/mobile_number_screen.dart
 import 'package:flutter/material.dart';
+import 'api_client.dart';
 import 'otp_verification_screen.dart';
 
 class MobileNumberScreen extends StatefulWidget {
-  const MobileNumberScreen({Key? key}) : super(key: key);
+  const MobileNumberScreen({super.key});
 
   @override
   State<MobileNumberScreen> createState() => _MobileNumberScreenState();
 }
 
 class _MobileNumberScreenState extends State<MobileNumberScreen> {
-  final TextEditingController _phoneController = TextEditingController();
-  String? _phoneError;
+  final _phoneController = TextEditingController();
+  final _api = const ApiClient();
 
-  void _onContinue() {
+  String? _error;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  String _normalizePhone(String input) {
+    return input.trim().replaceAll(RegExp(r'\s+'), '');
+  }
+
+  Future<void> _continue() async {
+    final phone = _normalizePhone(_phoneController.text);
+    if (phone.length < 10) {
+      setState(() => _error = 'Enter a valid mobile number');
+      return;
+    }
+
     setState(() {
-      _phoneError = null;
-      final phone = _phoneController.text.trim();
-      if (phone.isEmpty) {
-        _phoneError = 'Mobile number ضروری ہے';
-      } else if (phone.length < 10) {
-        _phoneError = 'درست موبائل نمبر درج کریں';
-      }
+      _error = null;
+      _loading = true;
     });
 
-    if (_phoneError != null) return;
+    try {
+      final res = await _api.requestOtp(phone: phone);
+      final demoOtp = (res['otp'] ?? '').toString();
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const OTPVerificationScreen(),
-      ),
-    );
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OTPVerificationScreen(
+            phone: phone,
+            demoOtp: demoOtp.isEmpty ? null : demoOtp,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    const bg = [
+      Color(0xFFE0F7FA),
+      Color(0xFFC8E6C9),
+      Color(0xFFFFF9C4),
+    ];
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFFE0F7FA),
-              Color(0xFFC8E6C9),
-              Color(0xFFFFF9C4),
-            ],
+            colors: bg,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 320),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 20,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Material(
+            color: Colors.white,
+            elevation: 10,
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    '📱 Quick Chat',
+                    'Quick Chat',
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
                       color: Color(0xFF3F51B5),
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'اپنا موبائل نمبر درج کریں تاکہ ہم آپ کو OTP بھیج سکیں۔',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF90A4AE),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Mobile Number',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
+                  const SizedBox(height: 12),
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
-                      hintText: '03xx xxxxxxx',
-                      prefixText: '+92 ',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      errorText: _phoneError,
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
+                      hintText: '03xxxxxxxxx',
+                      errorText: _error,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
+                  const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton(
-                      onPressed: _onContinue,
+                      onPressed: _loading ? null : _continue,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF00C853),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 5,
+                        disabledBackgroundColor: const Color(0xFFBDBDBD),
                       ),
-                      child: const Text(
-                        'Continue',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text(
+                              'Continue',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                 ],
