@@ -8,11 +8,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // 0 = Chats, 1 = Call History, 2 = My Spending, 3 = Notification
   int _selectedIndex = 0;
 
-  static const String centerActionName = 'AddContact';
   static const Color activeGreen = Color(0xFF00C853);
+  static const String centerActionName = 'AddContact';
 
   static const List<Color> bgGradient = [
     Color(0xFFE0F7FA),
@@ -21,12 +20,6 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   void _onTapTab(int index) => setState(() => _selectedIndex = index);
-
-  void _onAddContact() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add Contact (design only)')),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,10 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         title: const Text(
           'Chats',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
         actions: [
@@ -67,53 +57,72 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: const Center(
           child: Text(
-            'Home Content Goes Here',
+            'Chats Content Goes Here',
             style: TextStyle(fontSize: 16, color: Colors.black54),
           ),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: _AddContactFab(
-        onTap: _onAddContact,
-        semanticName: centerActionName,
+      bottomNavigationBar: _BottomNavBar(
+        selectedIndex: _selectedIndex,
+        onSelect: _onTapTab,
       ),
-      bottomNavigationBar: BottomAppBar(
+    );
+  }
+}
+
+class _BottomNavBar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  const _BottomNavBar({
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 64,
+      decoration: const BoxDecoration(
         color: Colors.white,
-        elevation: 12,
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: [
-              _BottomTab(
-                icon: Icons.chat_bubble_outline,
-                label: 'Chats',
-                selected: _selectedIndex == 0,
-                onTap: () => _onTapTab(0),
-              ),
-              _BottomTab(
-                icon: Icons.call,
-                label: 'Call History',
-                selected: _selectedIndex == 1,
-                onTap: () => _onTapTab(1),
-              ),
-              const SizedBox(width: 56),
-              _BottomTab(
-                icon: Icons.attach_money,
-                label: 'My Spending',
-                selected: _selectedIndex == 2,
-                onTap: () => _onTapTab(2),
-              ),
-              _BottomTab(
-                icon: Icons.notifications_none,
-                label: 'Notification',
-                selected: _selectedIndex == 3,
-                onTap: () => _onTapTab(3),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, -2)),
+        ],
+      ),
+      child: Row(
+        children: [
+          _BottomTab(
+            icon: Icons.chat_bubble_outline,
+            label: 'Chats',
+            selected: selectedIndex == 0,
+            onTap: () => onSelect(0),
           ),
-        ),
+          _BottomTab(
+            icon: Icons.call,
+            label: 'Call History',
+            selected: selectedIndex == 1,
+            onTap: () => onSelect(1),
+          ),
+
+          _CenterTab(
+            semanticName: _HomeScreenState.centerActionName,
+            selected: selectedIndex == 2,
+            onTap: () => onSelect(2),
+          ),
+
+          _BottomTab(
+            icon: Icons.attach_money,
+            label: 'My Spending',
+            selected: selectedIndex == 3,
+            onTap: () => onSelect(3),
+          ),
+          _BottomTab(
+            icon: Icons.notifications_none,
+            label: 'Notification',
+            selected: selectedIndex == 4,
+            onTap: () => onSelect(4),
+          ),
+        ],
       ),
     );
   }
@@ -163,45 +172,55 @@ class _BottomTab extends StatelessWidget {
   }
 }
 
-class _AddContactFab extends StatelessWidget {
-  final VoidCallback onTap;
+class _CenterTab extends StatelessWidget {
   final String semanticName;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _AddContactFab({
-    required this.onTap,
+  const _CenterTab({
     required this.semanticName,
+    required this.selected,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: semanticName,
-      button: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 66,
-          height: 66,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10,
-                offset: Offset(0, 6),
-              ),
-            ],
-            gradient: const LinearGradient(
-              colors: [Color(0xFF00C853), Color(0xFF00E676)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.person_add_alt_1,
-              color: Colors.white,
-              size: 30,
+    return Expanded(
+      child: Semantics(
+        label: semanticName,
+        button: true,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF00C853), Color(0xFF00E676)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.person_add_alt_1,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -233,7 +252,7 @@ class _AppDrawer extends StatelessWidget {
                   ),
                   SizedBox(height: 12),
                   Text(
-                    'Premium Chat',
+                    'Mubashir 4',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -241,15 +260,20 @@ class _AppDrawer extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 6),
-                  Text('Account Type: USER', style: TextStyle(color: Colors.white70)),
+                  Text('03222222222', style: TextStyle(color: Colors.white70)),
+                  SizedBox(height: 4),
+                  Text(
+                    'Account Type: CONSUMER',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                 ],
               ),
             ),
-            _DrawerItem(icon: Icons.attach_money, title: 'My Spending'),
-            _DrawerItem(icon: Icons.refresh, title: 'Check update'),
-            _DrawerItem(icon: Icons.support_agent, title: 'Help support'),
-            _DrawerItem(icon: Icons.settings, title: 'App Settings'),
-            _DrawerItem(icon: Icons.info_outline, title: 'About App'),
+            const _DrawerItem(icon: Icons.attach_money, title: 'My Spending'),
+            const _DrawerItem(icon: Icons.refresh, title: 'Check update'),
+            const _DrawerItem(icon: Icons.support_agent, title: 'Help sports'),
+            const _DrawerItem(icon: Icons.settings, title: 'App Settings'),
+            const _DrawerItem(icon: Icons.info_outline, title: 'About App'),
             const Spacer(),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -258,10 +282,17 @@ class _AppDrawer extends StatelessWidget {
                 height: 48,
                 child: ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Log Out'),
+                  icon: const Icon(Icons.logout, color: Colors.white),
+                  label: const Text(
+                    'Log Out',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFE53935),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
                   ),
                 ),
               ),
@@ -283,7 +314,10 @@ class _DrawerItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF3F51B5)),
-      title: Text(title),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+      ),
       onTap: () => Navigator.pop(context),
     );
   }

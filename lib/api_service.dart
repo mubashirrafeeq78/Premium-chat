@@ -1,49 +1,46 @@
 // lib/api_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'api_config.dart';
 
 class ApiService {
+  // Local testing (Termux) کیلئے:
+  // Browser/Emulator پر: http://127.0.0.1:3000
+  // Note: Flutter Web پر "localhost" آپ کے PC والا ہوتا ہے، موبائل والا نہیں۔
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:3000',
+  );
+
   static Future<Map<String, dynamic>> requestOtp({required String phone}) async {
-    final uri = Uri.parse(ApiConfig.requestOtp);
+    final uri = Uri.parse('$baseUrl/auth/request-otp');
     final res = await http.post(
       uri,
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone}),
     );
 
-    return _handle(res, fallbackMessage: 'Request failed');
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode >= 400) {
+      throw Exception(data['message'] ?? 'Request failed');
+    }
+    return data;
   }
 
   static Future<Map<String, dynamic>> verifyOtp({
     required String phone,
     required String otp,
   }) async {
-    final uri = Uri.parse(ApiConfig.verifyOtp);
+    final uri = Uri.parse('$baseUrl/auth/verify-otp');
     final res = await http.post(
       uri,
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone, 'otp': otp}),
     );
 
-    return _handle(res, fallbackMessage: 'Verify failed');
-  }
-
-  static Map<String, dynamic> _handle(http.Response res, {required String fallbackMessage}) {
-    Map<String, dynamic> data;
-    try {
-      data = (res.body.trim().isEmpty) ? {} : (jsonDecode(res.body) as Map<String, dynamic>);
-    } catch (_) {
-      data = {'message': 'Invalid server response'};
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode >= 400) {
+      throw Exception(data['message'] ?? 'Verify failed');
     }
-
-    if (res.statusCode >= 200 && res.statusCode < 300) return data;
-    throw Exception((data['message'] ?? data['error'] ?? fallbackMessage).toString());
+    return data;
   }
 }
