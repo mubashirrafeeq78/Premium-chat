@@ -1,4 +1,3 @@
-// lib/mobile_number_screen.dart
 import 'package:flutter/material.dart';
 import 'api_client.dart';
 import 'otp_verification_screen.dart';
@@ -11,25 +10,26 @@ class MobileNumberScreen extends StatefulWidget {
 }
 
 class _MobileNumberScreenState extends State<MobileNumberScreen> {
+  final _api = ApiClient();
   final TextEditingController _phoneController = TextEditingController();
-  final ApiClient _api = const ApiClient();
 
   String? _phoneError;
   bool _loading = false;
 
-  String _normalizePhone(String raw) {
-    final p = raw.trim().replaceAll(RegExp(r'\s+'), '');
-    // آپ چاہیں تو یہاں Pakistan format normalize کر سکتے ہیں، ابھی simple رکھ رہا ہوں
+  String _normalizePhone(String input) {
+    final p = input.trim().replaceAll(RegExp(r'\s+'), '');
+    // اگر user 03.. دے تو ہم +92 لگا دیں (simple demo)
+    if (p.startsWith('03')) return '+92${p.substring(1)}';
     return p;
   }
 
   Future<void> _onContinue() async {
     setState(() {
       _phoneError = null;
-      final phone = _phoneController.text.trim();
-      if (phone.isEmpty) {
+      final raw = _phoneController.text.trim();
+      if (raw.isEmpty) {
         _phoneError = 'Mobile number ضروری ہے';
-      } else if (phone.replaceAll(RegExp(r'[^\d]'), '').length < 10) {
+      } else if (raw.replaceAll(RegExp(r'[^0-9]'), '').length < 10) {
         _phoneError = 'درست موبائل نمبر درج کریں';
       }
     });
@@ -41,8 +41,7 @@ class _MobileNumberScreenState extends State<MobileNumberScreen> {
     setState(() => _loading = true);
     try {
       final res = await _api.requestOtp(phone: phone);
-
-      final demoOtp = (res['otp'] ?? '').toString(); // demo only (اگر backend دے رہا ہو)
+      final demoOtp = (res['demoOtp'] ?? '').toString();
 
       if (!mounted) return;
       Navigator.push(
@@ -100,7 +99,7 @@ class _MobileNumberScreenState extends State<MobileNumberScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    '📱 Quick Chat',
+                    '📱 Premium Chat',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -135,7 +134,6 @@ class _MobileNumberScreenState extends State<MobileNumberScreen> {
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
                       hintText: '03xx xxxxxxx',
-                      prefixText: '+92 ',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -157,20 +155,14 @@ class _MobileNumberScreenState extends State<MobileNumberScreen> {
                         ),
                         elevation: 5,
                       ),
-                      child: _loading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Text(
-                              'Continue',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
+                      child: Text(
+                        _loading ? 'Please wait...' : 'Continue',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ],

@@ -5,7 +5,7 @@ import 'profile_setup_screen.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String phone;
-  final String? demoOtp;
+  final String? demoOtp; // demo only
 
   const OTPVerificationScreen({
     super.key,
@@ -18,7 +18,7 @@ class OTPVerificationScreen extends StatefulWidget {
 }
 
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
-  final ApiClient _api = const ApiClient();
+  final _api = ApiClient();
 
   final List<TextEditingController> _controllers =
       List.generate(6, (_) => TextEditingController());
@@ -28,22 +28,22 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   int _resendCount = 0;
   int _secondsLeft = _resendScheduleSeconds[0];
   Timer? _timer;
-
   bool _loading = false;
-  String? _error;
 
   @override
   void initState() {
     super.initState();
     _startCooldown(_secondsLeft);
 
-    // Demo OTP auto-fill (اگر backend demo OTP دیتا ہو)
-    final d = (widget.demoOtp ?? '').trim();
-    if (d.length == 6) {
-      for (int i = 0; i < 6; i++) {
-        _controllers[i].text = d[i];
+    // demo: اگر backend demoOtp دے تو auto-fill (optional)
+    if (widget.demoOtp != null && widget.demoOtp!.isNotEmpty) {
+      final o = widget.demoOtp!.trim();
+      for (int i = 0; i < 6 && i < o.length; i++) {
+        _controllers[i].text = o[i];
       }
-      WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
     }
   }
 
@@ -92,7 +92,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     _controllers[index].text = v.characters.last;
     _controllers[index].selection = const TextSelection.collapsed(offset: 1);
 
-    if (index < 5) {
+    if (index < _controllers.length - 1) {
       _focusNodes[index + 1].requestFocus();
     } else {
       _focusNodes[index].unfocus();
@@ -104,11 +104,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   Future<void> _verifyOtp() async {
     if (!_otpComplete || _loading) return;
 
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
+    setState(() => _loading = true);
     try {
       await _api.verifyOtp(phone: widget.phone, otp: _otp);
 
@@ -120,37 +116,35 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         ),
       );
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _resendOtp() async {
-    if (!_canResend || _loading) return;
+    if (!_canResend) return;
 
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    _resendCount = (_resendCount + 1).clamp(1, 4);
+    final nextIndex = (_resendCount).clamp(0, _resendScheduleSeconds.length - 1);
+    final nextCooldown = _resendScheduleSeconds[nextIndex];
+
+    _startCooldown(nextCooldown);
 
     try {
       await _api.requestOtp(phone: widget.phone);
-
-      _resendCount = (_resendCount + 1).clamp(1, 4);
-      final nextIndex =
-          (_resendCount).clamp(0, _resendScheduleSeconds.length - 1);
-      final nextCooldown = _resendScheduleSeconds[nextIndex];
-      _startCooldown(nextCooldown);
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OTP resent')),
+        const SnackBar(content: Text('OTP resent (demo)')),
       );
     } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
   }
 
@@ -162,14 +156,17 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFE6FFFA), Color(0xFFF7FFE6)],
+            colors: [
+              Color(0xFFE6FFFA),
+              Color(0xFFF7FFE6),
+            ],
           ),
         ),
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: _buildCard(),
             ),
           ),
@@ -206,31 +203,25 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Enter the 6-digit code sent to your mobile.',
+            'Code sent to: ${widget.phone}',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Phone: ${widget.phone}',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 18),
+          if (widget.demoOtp != null && widget.demoOtp!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Demo OTP: ${widget.demoOtp}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ],
+          const SizedBox(height: 22),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(6, (i) => _otpBox(i)),
           ),
-          const SizedBox(height: 12),
-
-          if (_error != null) ...[
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red, fontSize: 12),
-            ),
-            const SizedBox(height: 10),
-          ],
+          const SizedBox(height: 18),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -254,7 +245,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
 
           SizedBox(
             width: double.infinity,
@@ -269,20 +260,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 ),
                 elevation: 6,
               ),
-              child: _loading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text(
-                      'Verify OTP',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+              child: Text(
+                _loading ? 'Verifying...' : 'Verify OTP',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
         ],
@@ -292,7 +277,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
   Widget _otpBox(int index) {
     return SizedBox(
-      width: 48,
+      width: 56,
       child: TextField(
         controller: _controllers[index],
         focusNode: _focusNodes[index],
