@@ -1,7 +1,6 @@
-name: quick_chatb
-description: A new Flutter project.
+name: premium_chat
+description: Premium Chat App
 publish_to: "none"
-
 version: 1.0.0+1
 
 environment:
@@ -10,10 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  cupertino_icons: ^1.0.6
-  image_picker: ^1.0.7
   http: ^1.2.2
+  image_picker: ^1.1.2
+  image: ^4.2.0
 
 dev_dependencies:
   flutter_test:

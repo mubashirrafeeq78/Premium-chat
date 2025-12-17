@@ -1,49 +1,59 @@
-// lib/api_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
 
 class ApiService {
-  static Future<Map<String, dynamic>> requestOtp({required String phone}) async {
-    final uri = Uri.parse(ApiConfig.requestOtp);
-    final res = await http.post(
-      uri,
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+  static Uri _u(String path, [Map<String, String>? q]) {
+    final base = ApiConfig.baseUrl;
+    final uri = Uri.parse('$base$path');
+    return q == null ? uri : uri.replace(queryParameters: q);
+  }
+
+  static Future<Map<String, dynamic>> requestOtp(String phone) async {
+    final r = await http.post(
+      _u('/auth/request-otp'),
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone}),
     );
-
-    return _handle(res, fallbackMessage: 'Request failed');
+    return jsonDecode(r.body);
   }
 
-  static Future<Map<String, dynamic>> verifyOtp({
-    required String phone,
-    required String otp,
-  }) async {
-    final uri = Uri.parse(ApiConfig.verifyOtp);
-    final res = await http.post(
-      uri,
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+  static Future<Map<String, dynamic>> verifyOtp(String phone, String otp) async {
+    final r = await http.post(
+      _u('/auth/verify-otp'),
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone, 'otp': otp}),
     );
-
-    return _handle(res, fallbackMessage: 'Verify failed');
+    return jsonDecode(r.body);
   }
 
-  static Map<String, dynamic> _handle(http.Response res, {required String fallbackMessage}) {
-    Map<String, dynamic> data;
-    try {
-      data = (res.body.trim().isEmpty) ? {} : (jsonDecode(res.body) as Map<String, dynamic>);
-    } catch (_) {
-      data = {'message': 'Invalid server response'};
-    }
+  static Future<Map<String, dynamic>> saveProfile({
+    required String phone,
+    required String role, // buyer/provider
+    String? name,
+    String? avatarBase64,
+    String? cnicFrontBase64,
+    String? cnicBackBase64,
+    String? selfieBase64,
+  }) async {
+    final r = await http.post(
+      _u('/profile/save'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone': phone,
+        'role': role,
+        'name': name,
+        'avatar_base64': avatarBase64,
+        'cnic_front_base64': cnicFrontBase64,
+        'cnic_back_base64': cnicBackBase64,
+        'selfie_base64': selfieBase64,
+      }),
+    );
+    return jsonDecode(r.body);
+  }
 
-    if (res.statusCode >= 200 && res.statusCode < 300) return data;
-    throw Exception((data['message'] ?? data['error'] ?? fallbackMessage).toString());
+  static Future<Map<String, dynamic>> getMe(String phone) async {
+    final r = await http.get(_u('/me', {'phone': phone}));
+    return jsonDecode(r.body);
   }
 }

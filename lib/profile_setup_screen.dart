@@ -1,14 +1,14 @@
-// lib/profile_setup_screen.dart
+import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 
-import 'api_client.dart';
-import 'home_screen.dart';
+import 'api_service.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
-  final String phone;
-
+  final String phone; // OTP verify کے بعد phone پاس کریں
   const ProfileSetupScreen({super.key, required this.phone});
 
   @override
@@ -16,363 +16,380 @@ class ProfileSetupScreen extends StatefulWidget {
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
-  final _api = const ApiClient();
   final _nameCtrl = TextEditingController();
-  final _aboutCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
 
-  String _role = 'buyer'; // buyer | provider
-  bool _loading = false;
-  String? _error;
+  bool isProvider = false;
 
-  final _picker = ImagePicker();
-  Uint8List? _avatarBytes;
-  Uint8List? _cnicFrontBytes;
-  Uint8List? _cnicBackBytes;
+  Uint8List? avatarBytes;
+  Uint8List? cnicFrontBytes;
+  Uint8List? cnicBackBytes;
+  Uint8List? selfieBytes;
 
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _aboutCtrl.dispose();
-    _cityCtrl.dispose();
-    super.dispose();
+  bool saving = false;
+  String? errorText;
+
+  final picker = ImagePicker();
+
+  // ---------- Image helpers (low bandwidth) ----------
+  Future<Uint8List?> _pickImage({required bool camera, ImageSource? forceSource}) async {
+    final source = forceSource ?? (camera ? ImageSource.camera : ImageSource.gallery);
+    final XFile? f = await picker.pickImage(source: source, imageQuality: 85);
+    if (f == null) return null;
+    final raw = await f.readAsBytes();
+    return _compressToJpeg(raw, maxWidth: 900, quality: 65);
   }
 
-  Future<void> _pickImage({
-    required bool fromCamera,
-    required void Function(Uint8List bytes) onBytes,
-  }) async {
-    final x = await _picker.pickImage(
-      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-      imageQuality: 70, // ✅ basic compression
-      maxWidth: 1024,
-    );
-    if (x == null) return;
-    final bytes = await x.readAsBytes();
-    onBytes(bytes);
-    if (mounted) setState(() {});
+  Uint8List _compressToJpeg(Uint8List input, {required int maxWidth, required int quality}) {
+    final decoded = img.decodeImage(input);
+    if (decoded == null) return input;
+
+    final resized = decoded.width > maxWidth
+        ? img.copyResize(decoded, width: maxWidth)
+        : decoded;
+
+    final jpg = img.encodeJpg(resized, quality: quality);
+    return Uint8List.fromList(jpg);
   }
 
-  Future<void> _save() async {
-    FocusScope.of(context).unfocus();
+  String? _toBase64(Uint8List? bytes) => bytes == null ? null : base64Encode(bytes);
 
-    final name = _nameCtrl.text.trim();
-    if (name.isEmpty) {
-      setState(() => _error = 'Name ضروری ہے');
-      return;
-    }
-
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      // ابھی images DB میں نہیں ڈال رہے (Performance کیلئے)
-      await _api.saveProfile(
-        phone: widget.phone,
-        role: _role,
-        name: name,
-        about: _aboutCtrl.text.trim().isEmpty ? null : _aboutCtrl.text.trim(),
-        city: _cityCtrl.text.trim().isEmpty ? null : _cityCtrl.text.trim(),
-      );
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => HomeScreen(phone: widget.phone),
+  // ---------- UI cards ----------
+  Widget _uploadCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Uint8List? bytes,
+    required VoidCallback onTap,
+    bool circular = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.06),
+            ),
+          ],
         ),
-      );
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile Setup'),
-        backgroundColor: const Color(0xFF00C853),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _topCard(),
-            const SizedBox(height: 14),
-            _formCard(),
-            const SizedBox(height: 14),
-            if (_error != null) _errorBox(_error!),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _loading ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00C853),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+            Icon(icon, size: 34, color: const Color(0xFF3F51B5)),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+            const SizedBox(height: 10),
+            if (bytes != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(circular ? 999 : 10),
+                child: Image.memory(
+                  bytes,
+                  height: circular ? 90 : 110,
+                  width: circular ? 90 : double.infinity,
+                  fit: BoxFit.cover,
                 ),
-                child: _loading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text(
-                        'Save & Continue',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _topCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 18, offset: Offset(0, 8)),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 34,
-            backgroundColor: Colors.grey.shade200,
-            backgroundImage:
-                _avatarBytes == null ? null : MemoryImage(_avatarBytes!),
-            child: _avatarBytes == null
-                ? const Icon(Icons.person, size: 38, color: Colors.black54)
-                : null,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Setup your profile',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Phone: ${widget.phone}',
-                  style: TextStyle(color: Colors.grey.shade700),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _loading
-                          ? null
-                          : () => _pickImage(
-                                fromCamera: false,
-                                onBytes: (b) => _avatarBytes = b,
-                              ),
-                      icon: const Icon(Icons.photo),
-                      label: const Text('Avatar'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _loading
-                          ? null
-                          : () => _pickImage(
-                                fromCamera: true,
-                                onBytes: (b) => _avatarBytes = b,
-                              ),
-                      icon: const Icon(Icons.photo_camera),
-                      label: const Text('Camera'),
+  Future<void> _submit() async {
+    setState(() {
+      errorText = null;
+      saving = true;
+    });
+
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      setState(() {
+        saving = false;
+        errorText = "Profile name required";
+      });
+      return;
+    }
+
+    if (isProvider) {
+      if (cnicFrontBytes == null || cnicBackBytes == null || selfieBytes == null) {
+        setState(() {
+          saving = false;
+          errorText = "Provider کے لیے CNIC Front/Back اور Selfie لازمی ہے";
+        });
+        return;
+      }
+    }
+
+    try {
+      final resp = await ApiService.saveProfile(
+        phone: widget.phone,
+        role: isProvider ? "provider" : "buyer",
+        name: name,
+        avatarBase64: _toBase64(avatarBytes),
+        cnicFrontBase64: _toBase64(cnicFrontBytes),
+        cnicBackBase64: _toBase64(cnicBackBytes),
+        selfieBase64: _toBase64(selfieBytes),
+      );
+
+      if (resp["success"] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(resp["message"]?.toString() ?? "Saved")),
+        );
+        Navigator.pushReplacementNamed(context, '/home', arguments: {"phone": widget.phone});
+      } else {
+        setState(() {
+          errorText = resp["message"]?.toString() ?? "Save failed";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorText = e.toString();
+      });
+    } finally {
+      setState(() {
+        saving = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFE0F7FA), Color(0xFFC8E6C9), Color(0xFFFFF9C4)],
+    );
+
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(gradient: bg),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              child: Container(
+                width: 360,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white.withOpacity(0.94),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
+                      color: Colors.black.withOpacity(0.12),
                     ),
                   ],
                 ),
-              ],
+                child: Column(
+                  children: [
+                    const Text("👤 Profile Setup",
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF3F51B5))),
+                    const SizedBox(height: 6),
+                    Text("Complete your profile and choose your user type.",
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    const SizedBox(height: 18),
+
+                    // Avatar
+                    GestureDetector(
+                      onTap: () async {
+                        final bytes = await _pickImage(camera: false);
+                        if (bytes != null) setState(() => avatarBytes = bytes);
+                      },
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 92,
+                            height: 92,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.grey.shade300, width: 3),
+                              image: avatarBytes == null
+                                  ? const DecorationImage(
+                                      image: NetworkImage("https://via.placeholder.com/90?text=Pic"),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : DecorationImage(image: MemoryImage(avatarBytes!), fit: BoxFit.cover),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text("Upload Profile Picture",
+                              style: TextStyle(color: Color(0xFF3F51B5), fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Name
+                    TextField(
+                      controller: _nameCtrl,
+                      decoration: InputDecoration(
+                        hintText: "Profile Name",
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+
+                    if (errorText != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.withOpacity(0.35)),
+                        ),
+                        child: Text(errorText!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    // User type buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _typeBtn(
+                            selected: isProvider,
+                            icon: Icons.build,
+                            text: "I’m a Service Provider",
+                            onTap: () => setState(() => isProvider = true),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _typeBtn(
+                            selected: !isProvider,
+                            icon: Icons.handshake,
+                            text: "I’m a Service buyer",
+                            onTap: () => setState(() => isProvider = false),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if (isProvider) ...[
+                      const SizedBox(height: 18),
+                      const Divider(),
+                      const SizedBox(height: 10),
+                      const Text("Live Verification (Mandatory for Provider)",
+                          style: TextStyle(color: Color(0xFF3F51B5), fontWeight: FontWeight.w700, fontSize: 13)),
+                      const SizedBox(height: 12),
+
+                      _uploadCard(
+                        title: "CNIC Front Side",
+                        subtitle: "(Tap to take Live Photo)",
+                        icon: Icons.badge,
+                        bytes: cnicFrontBytes,
+                        onTap: () async {
+                          final bytes = await _pickImage(camera: true);
+                          if (bytes != null) setState(() => cnicFrontBytes = bytes);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _uploadCard(
+                        title: "CNIC Back Side",
+                        subtitle: "(Tap to take Live Photo)",
+                        icon: Icons.credit_card,
+                        bytes: cnicBackBytes,
+                        onTap: () async {
+                          final bytes = await _pickImage(camera: true);
+                          if (bytes != null) setState(() => cnicBackBytes = bytes);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _uploadCard(
+                        title: "Live Selfie",
+                        subtitle: "(Tap to take Live Photo)",
+                        icon: Icons.camera_alt,
+                        bytes: selfieBytes,
+                        circular: true,
+                        onTap: () async {
+                          final bytes = await _pickImage(camera: true, forceSource: ImageSource.camera);
+                          if (bytes != null) setState(() => selfieBytes = bytes);
+                        },
+                      ),
+                    ],
+
+                    const SizedBox(height: 18),
+
+                    // Submit
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: saving ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: const Color(0xFF00C853),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: saving
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Text(isProvider ? "Submit for Review" : "Go To Application",
+                                style: const TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _formCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 18, offset: Offset(0, 8)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Account Type', style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: ChoiceChip(
-                  label: const Text('Buyer'),
-                  selected: _role == 'buyer',
-                  onSelected: _loading ? null : (_) => setState(() => _role = 'buyer'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ChoiceChip(
-                  label: const Text('Provider'),
-                  selected: _role == 'provider',
-                  onSelected: _loading ? null : (_) => setState(() => _role = 'provider'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _nameCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Full Name',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _cityCtrl,
-            decoration: const InputDecoration(
-              labelText: 'City (optional)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _aboutCtrl,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'About (optional)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 14),
-          const Text('CNIC (Front/Back)', style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _docBox(
-                  title: 'Front',
-                  bytes: _cnicFrontBytes,
-                  onGallery: _loading
-                      ? null
-                      : () => _pickImage(fromCamera: false, onBytes: (b) => _cnicFrontBytes = b),
-                  onCamera: _loading
-                      ? null
-                      : () => _pickImage(fromCamera: true, onBytes: (b) => _cnicFrontBytes = b),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _docBox(
-                  title: 'Back',
-                  bytes: _cnicBackBytes,
-                  onGallery: _loading
-                      ? null
-                      : () => _pickImage(fromCamera: false, onBytes: (b) => _cnicBackBytes = b),
-                  onCamera: _loading
-                      ? null
-                      : () => _pickImage(fromCamera: true, onBytes: (b) => _cnicBackBytes = b),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'نوٹ: ابھی CNIC images server پر upload نہیں ہو رہیں (بعد میں storage + URLs).',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _docBox({
-    required String title,
-    required Uint8List? bytes,
-    required VoidCallback? onGallery,
-    required VoidCallback? onCamera,
+  Widget _typeBtn({
+    required bool selected,
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Container(
-            height: 86,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              image: bytes == null
-                  ? null
-                  : DecorationImage(image: MemoryImage(bytes), fit: BoxFit.cover),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFE8EAF6) : const Color(0xFFF7F7F7),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? const Color(0xFF3F51B5) : Colors.grey.shade300, width: 2),
+          boxShadow: selected
+              ? [BoxShadow(blurRadius: 10, offset: const Offset(0, 3), color: Colors.black.withOpacity(0.08))]
+              : [],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: selected ? const Color(0xFF3F51B5) : Colors.black87),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? const Color(0xFF3F51B5) : Colors.black87,
+                ),
+              ),
             ),
-            child: bytes == null
-                ? const Icon(Icons.credit_card, size: 34, color: Colors.black45)
-                : null,
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onGallery,
-                  child: const Text('Gallery'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onCamera,
-                  child: const Text('Camera'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _errorBox(String msg) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.shade200),
-      ),
-      child: Text(
-        msg,
-        style: TextStyle(color: Colors.red.shade800, fontWeight: FontWeight.w700),
+          ],
+        ),
       ),
     );
   }
