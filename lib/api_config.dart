@@ -1,5 +1,9 @@
 class ApiConfig {
-  // 🔴 صرف یہی لائن بدلے گی اگر سرور بدلے
-  static const String baseUrl =
-      'https://premiumchatbackend-production.up.railway.app';
+  const ApiConfig._();
+
+  // Railway domain default (آپ بعد میں VPS domain رکھ دیں)
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://premiumchatbackend-production.up.railway.app',
+  );
 }

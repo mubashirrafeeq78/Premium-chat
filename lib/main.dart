@@ -4,9 +4,7 @@ import 'otp_verification_screen.dart';
 import 'profile_setup_screen.dart';
 import 'home_screen.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -14,28 +12,45 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Premium Chat',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.green),
       initialRoute: '/',
       routes: {
         '/': (context) => const MobileNumberScreen(),
 
-        // OTP screen کو direct route سے نہ کھولیں کیونکہ phone required ہے
-        // اگر پھر بھی کھولنا ہو تو arguments کے ساتھ Navigator.pushNamed استعمال کریں
         '/otp': (context) {
-          final args =
-              ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-          final phone = (args?['phone'] ?? '').toString();
-          final demoOtp = (args?['demoOtp'] as String?);
-
-          return OTPVerificationScreen(
-            phone: phone,
-            demoOtp: demoOtp,
-          );
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is Map) {
+            final phone = (args['phone'] ?? '').toString();
+            final demoOtp = (args['demoOtp'] ?? '').toString();
+            if (phone.isNotEmpty) {
+              return OTPVerificationScreen(
+                phone: phone,
+                demoOtp: demoOtp.isEmpty ? null : demoOtp,
+              );
+            }
+          }
+          return const MobileNumberScreen();
         },
 
-        '/profile': (context) => const ProfileSetupScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/profile': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is Map) {
+            final phone = (args['phone'] ?? '').toString();
+            if (phone.isNotEmpty) return ProfileSetupScreen(phone: phone);
+          }
+          return const MobileNumberScreen();
+        },
+
+        '/home': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          if (args is Map) {
+            final phone = (args['phone'] ?? '').toString();
+            if (phone.isNotEmpty) return HomeScreen(phone: phone);
+          }
+          return const MobileNumberScreen();
+        },
       },
     );
   }
