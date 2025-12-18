@@ -15,14 +15,22 @@ class PremiumChatApp extends StatelessWidget {
     return MaterialApp(
       title: "Premium Chat",
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF00C853),
+      ),
+
+      // 🔹 App start point
       initialRoute: AppRoutes.auth,
+
+      // 🔹 All routes defined in ONE place
       routes: {
+        // Auth flow
         AppRoutes.auth: (_) => const AuthScreen(),
         AppRoutes.otp: (_) => const OtpScreen(),
         AppRoutes.profile: (_) => const ProfileSetupScreen(),
 
-        // ✅ NEW SEPARATE HOMES
+        // Buyer & Provider homes
         AppRoutes.homeBuyer: (_) => const BuyerHomeScreen(),
         AppRoutes.homeProvider: (_) => const ProviderHomeScreen(),
       },
