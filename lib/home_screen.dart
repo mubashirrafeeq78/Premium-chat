@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'api_service.dart';
+import 'storage.dart';
+import 'widgets.dart';
+import 'routes.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String phone;
-  const HomeScreen({super.key, required this.phone});
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool loading = true;
-  String? error;
-  Map<String, dynamic>? me;
+  String _name = "";
+  String _role = "";
+  String _phone = "";
 
   @override
   void initState() {
@@ -21,79 +22,39 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _load() async {
+    final user = await AppStorage.getUser();
+    final phone = await AppStorage.getPhone();
     setState(() {
-      loading = true;
-      error = null;
+      _name = user?.name ?? "";
+      _role = user?.role ?? "";
+      _phone = phone ?? "";
     });
+  }
 
-    try {
-      final r = await ApiService.getMe(widget.phone);
-      if (r["success"] == true) {
-        setState(() => me = r);
-      } else {
-        setState(() => error = r["message"]?.toString() ?? "Failed");
-      }
-    } catch (e) {
-      setState(() => error = e.toString());
-    } finally {
-      setState(() => loading = false);
-    }
+  Future<void> _logout() async {
+    await AppStorage.clearAll();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, AppRoutes.auth, (_) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = me?["user"];
-    final profile = me?["profile"];
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("PremiumChat"),
-        actions: [
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
-        ],
+      appBar: AppBar(title: const Text("Home")),
+      body: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Welcome: $_name", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text("Phone: $_phone"),
+            Text("Role: $_role"),
+            const SizedBox(height: 18),
+            PrimaryButton(text: "Logout", onPressed: _logout),
+          ],
+        ),
       ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-              ? Center(child: Text(error!))
-              : Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Phone: ${user?["phone"] ?? ""}", style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 6),
-                      Text("Role: ${user?["role"] ?? ""}"),
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          color: Colors.white,
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Profile (Loaded from DB)", style: TextStyle(fontWeight: FontWeight.w800)),
-                            const SizedBox(height: 10),
-                            Text("Name: ${profile?["name"] ?? "-"}"),
-                            if (user?["role"] == "provider") ...[
-                              const SizedBox(height: 6),
-                              Text("Status: ${profile?["verification_status"] ?? "pending"}"),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        "Next Step: اب ہم services / listings / categories وغیرہ کا DB backend کریں گے۔",
-                        style: TextStyle(color: Colors.black54),
-                      ),
-                    ],
-                  ),
-                ),
     );
   }
 }

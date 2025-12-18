@@ -1,104 +1,69 @@
-// lib/api_client.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'config.dart';
 
 class ApiClient {
-  const ApiClient();
+  final String baseUrl;
 
-  // ✅ صرف یہ لائن بدلیں اگر بعد میں سرور/ڈومین چینج کریں
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://premiumchatbackend-production.up.railway.app',
-  );
+  ApiClient({required this.baseUrl});
 
-  Future<Map<String, dynamic>> requestOtp({required String phone}) async {
-    final uri = Uri.parse('$baseUrl/auth/request-otp');
-    final res = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone}),
-    );
-    final data = _decodeMap(res);
-    _throwIfError(res, data, fallback: 'Request OTP failed');
-    return data;
+  Uri _u(String path, [Map<String, String>? q]) {
+    final uri = Uri.parse("$baseUrl$path");
+    return q == null ? uri : uri.replace(queryParameters: q);
   }
 
-  Future<Map<String, dynamic>> verifyOtp({
-    required String phone,
-    required String otp,
-  }) async {
-    final uri = Uri.parse('$baseUrl/auth/verify-otp');
-    final res = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone, 'otp': otp}),
-    );
-    final data = _decodeMap(res);
-    _throwIfError(res, data, fallback: 'Verify OTP failed');
-    return data;
-  }
-
-  Future<Map<String, dynamic>> saveProfile({
-    required String phone,
-    required String role, // buyer | provider
-    required String name,
-    String? about,
-    String? city,
-  }) async {
-    final uri = Uri.parse('$baseUrl/profile/setup');
-    final res = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'phone': phone,
-        'role': role,
-        'name': name,
-        'about': about,
-        'city': city,
-      }),
-    );
-    final data = _decodeMap(res);
-    _throwIfError(res, data, fallback: 'Save profile failed');
-    return data;
-  }
-
-  Future<Map<String, dynamic>> fetchHome({required String phone}) async {
-    final uri = Uri.parse('$baseUrl/home?phone=${Uri.encodeComponent(phone)}');
-    final res = await http.get(uri);
-    final data = _decodeMap(res);
-    _throwIfError(res, data, fallback: 'Load home failed');
-    return data;
-  }
-
-  Map<String, dynamic> _decodeMap(http.Response res) {
-    try {
-      final body = res.body.trim();
-      if (body.isEmpty) return <String, dynamic>{};
-      final decoded = jsonDecode(body);
-
-      if (decoded is Map) {
-        return Map<String, dynamic>.from(decoded);
-      }
-      return <String, dynamic>{'data': decoded};
-    } catch (_) {
-      return <String, dynamic>{'message': 'Invalid server response'};
+  Map<String, dynamic> _safeJson(http.Response r) {
+    final ct = (r.headers["content-type"] ?? "").toLowerCase();
+    if (!ct.contains("application/json")) {
+      final body = r.body;
+      final preview = body.length > 200 ? body.substring(0, 200) : body;
+      throw Exception("API not JSON (status ${r.statusCode}). Body: $preview");
     }
+    final decoded = jsonDecode(r.body);
+    if (decoded is Map<String, dynamic>) return decoded;
+    throw Exception("Invalid JSON shape");
   }
 
-  void _throwIfError(
-    http.Response res,
-    Map<String, dynamic> data, {
-    required String fallback,
-  }) {
-    if (res.statusCode >= 200 && res.statusCode < 300) return;
-    final msg = (data['message'] ?? data['error'] ?? fallback).toString();
-    throw ApiException(msg);
-  }
-}
+  Future<Map<String, dynamic>> postJson(
+    String path, {
+    Map<String, String>? headers,
+    Object? body,
+    String? token,
+  }) async {
+    final h = <String, String>{
+      "Content-Type": "application/json",
+      ...(headers ?? {}),
+      if (token != null && token.isNotEmpty) "Authorization": "Bearer $token",
+    };
 
-class ApiException implements Exception {
-  final String message;
-  ApiException(this.message);
-  @override
-  String toString() => message;
+    final r = await http
+        .post(_u(path), headers: h, body: jsonEncode(body ?? {}))
+        .timeout(AppConfig.timeout);
+
+    final j = _safeJson(r);
+    if (r.statusCode >= 400) {
+      throw Exception(j["message"]?.toString() ?? "Request failed");
+    }
+    return j;
+  }
+
+  Future<Map<String, dynamic>> getJson(
+    String path, {
+    Map<String, String>? query,
+    Map<String, String>? headers,
+    String? token,
+  }) async {
+    final h = <String, String>{
+      ...(headers ?? {}),
+      if (token != null && token.isNotEmpty) "Authorization": "Bearer $token",
+    };
+
+    final r = await http.get(_u(path, query), headers: h).timeout(AppConfig.timeout);
+
+    final j = _safeJson(r);
+    if (r.statusCode >= 400) {
+      throw Exception(j["message"]?.toString() ?? "Request failed");
+    }
+    return j;
+  }
 }
