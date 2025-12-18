@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'routes.dart';
 import 'auth_screen.dart';
 import 'otp_screen.dart';
 import 'profile_setup_screen.dart';
-import 'home_screen.dart';
+import 'home_buyer_screen.dart';
+import 'home_provider_screen.dart';
 
 class PremiumChatApp extends StatelessWidget {
   const PremiumChatApp({super.key});
@@ -19,7 +21,10 @@ class PremiumChatApp extends StatelessWidget {
         AppRoutes.auth: (_) => const AuthScreen(),
         AppRoutes.otp: (_) => const OtpScreen(),
         AppRoutes.profile: (_) => const ProfileSetupScreen(),
-        AppRoutes.home: (_) => const HomeScreen(),
+
+        // ✅ NEW SEPARATE HOMES
+        AppRoutes.homeBuyer: (_) => const BuyerHomeScreen(),
+        AppRoutes.homeProvider: (_) => const ProviderHomeScreen(),
       },
     );
   }
