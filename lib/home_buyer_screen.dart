@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'provider_list_screen.dart'; // 👈 providers list screen
 
 class BuyerHomeScreen extends StatefulWidget {
   const BuyerHomeScreen({super.key});
@@ -87,8 +88,7 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
             ],
           ),
         ),
-        // ابھی صرف background ہے (بعد میں ہر tab کا content اسی جگہ add کریں گے)
-        child: const SizedBox.shrink(),
+        child: _buildBody(),
       ),
 
       bottomNavigationBar: _BottomBar(
@@ -96,6 +96,17 @@ class _BuyerHomeScreenState extends State<BuyerHomeScreen> {
         onTap: _setTab,
       ),
     );
+  }
+
+  /// 🔑 Body switch (safe & future-proof)
+  Widget _buildBody() {
+    switch (_index) {
+      case 2:
+        // ✅ Plus button → Provider users list
+        return const ProviderListScreen();
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }
 
@@ -112,7 +123,6 @@ class _BottomBar extends StatelessWidget {
   static const _inactive = Color(0xFF9E9E9E);
 
   Color _colorFor(int i) {
-    // Center والا ہمیشہ green رہے گا
     if (i == 2) return _active;
     return currentIndex == i ? _active : _inactive;
   }
@@ -148,7 +158,7 @@ class _BottomBar extends StatelessWidget {
               onTap: () => onTap(1),
             ),
 
-            // Center Big Button (Add Contact)
+            // 🔵 Center Plus Button
             Expanded(
               child: Center(
                 child: GestureDetector(
@@ -168,7 +178,11 @@ class _BottomBar extends StatelessWidget {
                       ],
                       border: Border.all(color: Colors.white, width: 4),
                     ),
-                    child: const Icon(Icons.person_add_alt_1, color: Colors.white, size: 28),
+                    child: const Icon(
+                      Icons.person_add_alt_1,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
                 ),
               ),
