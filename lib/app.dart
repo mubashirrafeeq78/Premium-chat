@@ -20,20 +20,24 @@ class PremiumChatApp extends StatelessWidget {
         colorSchemeSeed: const Color(0xFF00C853),
       ),
 
-      // 🔹 App start point
+      // ✅ ALWAYS start from Auth (Mobile Number screen)
       initialRoute: AppRoutes.auth,
 
-      // 🔹 All routes defined in ONE place
       routes: {
         // Auth flow
         AppRoutes.auth: (_) => const AuthScreen(),
         AppRoutes.otp: (_) => const OtpScreen(),
         AppRoutes.profile: (_) => const ProfileSetupScreen(),
 
-        // Buyer & Provider homes
+        // Home screens
         AppRoutes.homeBuyer: (_) => const BuyerHomeScreen(),
         AppRoutes.homeProvider: (_) => const ProviderHomeScreen(),
       },
+
+      // ✅ Safety: unknown route fallback
+      onUnknownRoute: (_) => MaterialPageRoute(
+        builder: (_) => const AuthScreen(),
+      ),
     );
   }
 }
