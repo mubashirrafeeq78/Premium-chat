@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'api_service.dart';
+import 'otp_verification.dart';
 
 class AuthScreen extends StatefulWidget {
   @override
@@ -7,40 +9,41 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  // موبائل نمبر کے لیے کنٹرولر
-  final TextEditingController _mobileController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
-  String _message = "";
+  String? _errorMessage;
 
-  void _handleContinue() async {
-    String mobile = _mobileController.text.trim();
+  // مخصوص ریڈ ایرر پاپ اپ کا فنکشن
+  void _showError(String message) {
+    setState(() { _errorMessage = message; });
+    Timer(Duration(seconds: 3), () {
+      if (mounted) setState(() { _errorMessage = null; });
+    });
+  }
 
-    // 1. بنیادی ویلیڈیشن
-    if (mobile.length != 11 || !mobile.startsWith('03')) {
-      setState(() => _message = "براہ کرم درست 11 ہندسوں کا نمبر درج کریں۔");
+  void _sendOTP() async {
+    if (_phoneController.text.length < 10) {
+      _showError("براہ کرم درست موبائل نمبر درج کریں۔");
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _message = "";
-    });
+    setState(() => _isLoading = true);
 
-    // 2. بیک اینڈ (auth.js) کو ریکویسٹ بھیجنا
     final response = await ApiService.postRequest('auth', {
-      'mobile': mobile,
-      'action': 'send_otp'
+      'mobile': _phoneController.text,
     });
 
     setState(() => _isLoading = false);
 
-    // 3. جواب کی بنیاد پر ایکشن لینا
     if (response['status'] == 'success') {
-      // اگلے پیج پر جانا اور نمبر ساتھ لے جانا (جیسے او ٹی پی ویریفیکیشن)
-      print("OTP Sent Successfully!");
-      // یہاں آپ Navigator.push استعمال کر کے OTP اسکرین پر بھیج سکتے ہیں
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OTPVerificationScreen(mobile: _phoneController.text),
+        ),
+      );
     } else {
-      setState(() => _message = response['message'] ?? "خرابی پیش آگئی۔");
+      _showError(response['message'] ?? "سرور سے رابطہ نہیں ہو سکا۔");
     }
   }
 
@@ -48,65 +51,79 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        padding: EdgeInsets.all(25),
+        width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
             colors: [Color(0xFFE3FDF5), Color(0xFFFFE6FA)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
-        child: Center(
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 50, horizontal: 25),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 15)],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("🤗", style: TextStyle(fontSize: 40)),
-                SizedBox(height: 10),
-                Text("Welcome!", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF4A55A2))),
-                SizedBox(height: 15),
-                Text("Enter your 11-digit mobile number to proceed.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-                SizedBox(height: 35),
-                
-                // موبائل ان پٹ فیلڈ
-                TextField(
-                  controller: _mobileController,
-                  keyboardType: TextInputType.phone,
-                  maxLength: 11,
-                  decoration: InputDecoration(
-                    hintText: "e.g., 03XXXXXXXXX",
-                    filled: true,
-                    fillColor: Color(0xFFF9F9F9),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                  ),
+        child: Stack(
+          children: [
+            Center(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                padding: EdgeInsets.symmetric(horizontal: 25, vertical: 45),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(35),
+                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 40, offset: Offset(0, 20))],
                 ),
-                
-                SizedBox(height: 20),
-                Text(_message, style: TextStyle(color: Colors.red, fontSize: 14)),
-
-                // بٹن
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleContinue,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF00C853),
-                      padding: EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text("Welcome Back", style: TextStyle(color: Color(0xFF4A55A2), fontSize: 28, fontWeight: FontWeight.w800)),
+                    SizedBox(height: 8),
+                    Text("Enter your mobile number to continue", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    SizedBox(height: 35),
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        hintText: "03xxxxxxxxx",
+                        filled: true,
+                        fillColor: Color(0xFFF9F9F9),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                        contentPadding: EdgeInsets.all(20),
+                      ),
                     ),
-                    child: _isLoading 
-                      ? CircularProgressIndicator(color: Colors.white) 
-                      : Text("Continue", style: TextStyle(fontSize: 18, color: Colors.white)),
-                  ),
+                    SizedBox(height: 25),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _sendOTP,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF00C853),
+                        minimumSize: Size(double.infinity, 60),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        elevation: 10,
+                      ),
+                      child: _isLoading 
+                        ? CircularProgressIndicator(color: Colors.white)
+                        : Text("Send OTP", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            
+            // مخصوص ریڈ ایرر پاپ اپ
+            if (_errorMessage != null)
+              Positioned(
+                top: 50,
+                left: 20,
+                right: 20,
+                child: Container(
+                  padding: EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: Colors.red, width: 2),
+                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                  ),
+                  child: Text(_errorMessage!, textAlign: TextAlign.center, style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                ),
+              ),
+          ],
         ),
       ),
     );
