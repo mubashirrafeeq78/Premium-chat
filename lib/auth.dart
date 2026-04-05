@@ -90,25 +90,4 @@ class _AuthScreenState extends State<AuthScreen> {
                 Text(_message, style: TextStyle(color: Colors.red, fontSize: 14)),
 
                 // بٹن
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleContinue,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF00C853),
-                      padding: EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    ),
-                    child: _isLoading 
-                      ? CircularProgressIndicator(color: Colors.white) 
-                      : Text("Continue", style: TextStyle(fontSize: 18, color: Colors.white)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+                
