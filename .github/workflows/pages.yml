@@ -25,8 +25,8 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Web (No Cache)
-        run: flutter build web --pwa-strategy=none
+      - name: Build Web (No Cache + Fix Path)
+        run: flutter build web --pwa-strategy=none --base-href "/Premium-chat/"
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
