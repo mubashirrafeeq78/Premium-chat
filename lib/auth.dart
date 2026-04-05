@@ -66,7 +66,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text("👋", style: TextStyle(fontSize: 40)),
+                Text("🤗", style: TextStyle(fontSize: 40)),
                 SizedBox(height: 10),
                 Text("Welcome!", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF4A55A2))),
                 SizedBox(height: 15),
