@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'config.dart';
 
 class ApiService {
-  // مشترکہ پوسٹ ریکویسٹ فنکشن
   static Future<Map<String, dynamic>> postRequest(String endpoint, Map<String, dynamic> body) async {
+    // یو آر ایل بنانا
     final url = Uri.parse("${AppConfig.baseUrl}$endpoint");
 
     try {
@@ -12,18 +12,26 @@ class ApiService {
         url,
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": AppConfig.apiKey, // آپ کی سیکیورٹی کی یہاں سے جائے گی
+          "x-api-key": AppConfig.apiKey,
+          // ویب کے لیے یہ ہیڈرز ضروری ہو سکتے ہیں
+          "Accept": "application/json",
         },
         body: jsonEncode(body),
       );
 
-      // سرور سے آنے والے جواب کو ڈی کوڈ کرنا
-      return jsonDecode(response.body);
+      // جواب کو چیک کریں
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {
+          "status": "error",
+          "message": "سرور کا جواب: ${response.statusCode}\n${response.body}"
+        };
+      }
     } catch (e) {
-      // اگر انٹرنیٹ یا سرور کا مسئلہ ہو
       return {
         "status": "error",
-        "message": "کنکشن کا مسئلہ: ${e.toString()}"
+        "message": "کنکشن کا مسئلہ: $e"
       };
     }
   }
