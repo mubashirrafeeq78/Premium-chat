@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'config.dart';
 import 'api_service.dart';
-// اپنی OTP اسکرین فائل کو یہاں امپورٹ کریں
-// import 'otp_verification.dart'; 
+// اپنی او ٹی پی فائل کا درست نام یہاں لکھیں
+import 'otp_verification.dart'; 
 
 class AuthScreen extends StatefulWidget {
   @override
@@ -15,7 +15,6 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLoading = false;
 
   Future<void> sendOtp() async {
-    // بنیادی تصدیق
     if (_phoneController.text.length < 10) {
       _showStatusMessage("Please enter a valid phone number", isError: true);
       return;
@@ -32,29 +31,29 @@ class _AuthScreenState extends State<AuthScreen> {
       if (response['status'] == 'success') {
         _showStatusMessage("Verification code sent successfully!", isError: false);
         
-        // 2 سیکنڈ بعد اگلی اسکرین پر بھیج دیں
+        // یوزر کو او ٹی پی اسکرین پر بھیجنا (2 سیکنڈ کے وقفے کے بعد)
         Future.delayed(Duration(seconds: 2), () {
-          // Navigator.push(
-          //   context, 
-          //   MaterialPageRoute(builder: (context) => OtpVerifyScreen(phone: _phoneController.text))
-          // );
-          print("Navigating to OTP Screen..."); // ابھی کے لیے صرف پرنٹ
+          if (mounted) {
+            Navigator.push(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => OTPVerificationScreen(mobile: _phoneController.text)
+              ),
+            );
+          }
         });
       } else {
-        // سیکیورٹی کے لیے صرف سادہ ایرر دکھائیں
         _showStatusMessage(response['message'] ?? "Authentication failed. Please try again.", isError: true);
       }
     } catch (e) {
-      // ہیکرز کو تکنیکی معلومات دینے کے بجائے عام میسج دکھائیں
       _showStatusMessage("Connection error. Please check your internet.", isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // خوبصورت اور مختصر میسج دکھانے کا فنکشن
   void _showStatusMessage(String message, {required bool isError}) {
-    ScaffoldMessenger.of(context).clearSnackBars(); // پرانے میسجز ہٹائیں
+    ScaffoldMessenger.of(context).clearSnackBars(); 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: Duration(seconds: 3),
@@ -93,7 +92,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // اسکرین کی چوڑائی معلوم کریں تاکہ ریسپونسیو ڈیزائن بن سکے
     double screenWidth = MediaQuery.of(context).size.width;
     double containerWidth = screenWidth > 600 ? 450 : screenWidth * 0.9;
 
@@ -128,7 +126,6 @@ class _AuthScreenState extends State<AuthScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // لوگو یا آئیکن کے لیے جگہ
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -153,15 +150,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     style: TextStyle(color: Colors.blueGrey[400], fontSize: 14),
                   ),
                   SizedBox(height: 35),
-                  
-                  // ان پٹ فیلڈ
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(15), // عالمی نمبرز کے لیے حد بڑھا دی
+                      LengthLimitingTextInputFormatter(15),
                     ],
                     decoration: InputDecoration(
                       labelText: "Mobile Number",
@@ -184,8 +179,6 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                   SizedBox(height: 30),
-                  
-                  // بٹن
                   SizedBox(
                     width: double.infinity,
                     height: 58,
