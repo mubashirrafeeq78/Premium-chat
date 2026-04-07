@@ -15,12 +15,11 @@ class OTPVerificationScreen extends StatefulWidget {
 }
 
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
-  // 6 ہندسوں کے لیے کنٹرولرز اور فوکس نوڈس
   final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   
   bool _isLoading = false;
-  int _timeLeft = 120; // 2 منٹ (120 سیکنڈ)
+  int _timeLeft = 120; 
   Timer? _timer;
 
   @override
@@ -49,7 +48,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     });
   }
 
-  // خوبصورت اسٹیٹس میسج (3 سیکنڈ کے لیے)
   void _showStatus(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -92,28 +90,32 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // آپ کے verify-otp.js کے مطابق ڈیٹا بھیجنا
       final response = await ApiService.postRequest(AppConfig.verifyOtp, {
         'mobile': widget.mobile,
         'otp': otp,
       });
 
       if (response['status'] == 'success') {
-        _showStatus("Account verified successfully!", isError: false);
+        _showStatus("Verified! Welcome back.", isError: false);
         
-        // 2 سیکنڈ بعد Gateway اسکرین پر منتقلی
+        // اگر یوزر نیا ہے یا پرانا، دونوں صورتوں میں گیٹ وے پر بھیجنا
+        // آپ یہاں لاجک بدل سکتے ہیں اگر الگ الگ پیجز پر بھیجنا ہو
         Future.delayed(Duration(seconds: 2), () {
-          // Navigator.pushAndRemoveUntil(
-          //   context, 
-          //   MaterialPageRoute(builder: (context) => GetawayScreen()),
-          //   (route) => false
-          // );
-          print("Navigating to Gateway Screen..."); 
+          if (mounted) {
+            // Navigator.pushAndRemoveUntil(
+            //   context, 
+            //   MaterialPageRoute(builder: (context) => GetawayScreen()),
+            //   (route) => false
+            // );
+            print("Navigating to Gateway. User Exists: ${response['user_exists']}");
+          }
         });
       } else {
-        _showStatus(response['message'] ?? "Invalid code. Please try again.", isError: true);
+        _showStatus(response['message'] ?? "Invalid code", isError: true);
       }
     } catch (e) {
-      _showStatus("Connection error. Verification failed.", isError: true);
+      _showStatus("System error. Try again.", isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -148,18 +150,17 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.mark_email_read_outlined, size: 50, color: Color(0xFF3F51B5)),
+                  Icon(Icons.verified_user_outlined, size: 50, color: Color(0xFF3F51B5)),
                   SizedBox(height: 24),
-                  Text("Verification", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
+                  Text("Verify Account", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
                   SizedBox(height: 12),
-                  Text("Enter the 6-digit code sent to\n${widget.mobile}", textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey[400], fontSize: 14)),
+                  Text("Enter code sent to ${widget.mobile}", textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey[400], fontSize: 14)),
                   SizedBox(height: 35),
                   
-                  // OTP Input Fields
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(6, (index) => SizedBox(
-                      width: (containerWidth - 100) / 6,
+                      width: (containerWidth - 110) / 6,
                       child: TextField(
                         controller: _controllers[index],
                         focusNode: _focusNodes[index],
@@ -172,13 +173,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           counterText: "",
                           filled: true,
                           fillColor: Colors.grey[50],
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF00C853), width: 2)),
                         ),
                         onChanged: (value) {
                           if (value.length == 1 && index < 5) _focusNodes[index + 1].requestFocus();
                           if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
-                          if (index == 5 && value.length == 1) _verifyOTP(); // آخری ہندسہ پر خودکار تصدیق
+                          if (index == 5 && value.length == 1) _verifyOTP();
                         },
                       ),
                     )),
@@ -193,25 +194,21 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF00C853),
                         foregroundColor: Colors.white,
-                        elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 0,
                       ),
                       child: _isLoading 
-                        ? SizedBox(height: 25, width: 25, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text("VERIFY ACCOUNT", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                        ? CircularProgressIndicator(color: Colors.white)
+                        : Text("VERIFY & CONTINUE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   
                   SizedBox(height: 30),
-                  
-                  // Timer & Resend Logic
                   _timeLeft > 0 
-                    ? Text("Resend code in ${_timeLeft}s", style: TextStyle(color: Colors.blueGrey[300], fontWeight: FontWeight.w500))
+                    ? Text("Resend available in ${_timeLeft}s", style: TextStyle(color: Colors.grey))
                     : TextButton(
-                        onPressed: () {
-                          Navigator.pop(context); // واپس جا کر دوبارہ نمبر بھیجیں
-                        },
-                        child: Text("Didn't receive? Resend Code", style: TextStyle(color: Color(0xFF3F51B5), fontWeight: FontWeight.bold)),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("Edit Number / Resend", style: TextStyle(color: Color(0xFF3F51B5), fontWeight: FontWeight.bold)),
                       ),
                 ],
               ),
