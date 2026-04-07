@@ -3,8 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'api_service.dart';
 import 'config.dart';
-// یہاں اپنی گیٹ وے فائل امپورٹ کریں
-// import 'getaway.dart'; 
+import 'security_getway.dart'; // سیکیورٹی گیٹ وے فائل امپورٹ کریں
 
 class OTPVerificationScreen extends StatefulWidget {
   final String mobile;
@@ -90,35 +89,40 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // آپ کے verify-otp.js کے مطابق ڈیٹا بھیجنا
       final response = await ApiService.postRequest(AppConfig.verifyOtp, {
         'mobile': widget.mobile,
         'otp': otp,
       });
 
       if (response['status'] == 'success') {
-        _showStatus("Verified! Welcome back.", isError: false);
+        _showStatus("Identity Verified!", isError: false);
         
-        // اگر یوزر نیا ہے یا پرانا، دونوں صورتوں میں گیٹ وے پر بھیجنا
-        // آپ یہاں لاجک بدل سکتے ہیں اگر الگ الگ پیجز پر بھیجنا ہو
+        // کامیابی پر سیکیورٹی گیٹ وے کی طرف منتقلی
         Future.delayed(Duration(seconds: 2), () {
           if (mounted) {
-            // Navigator.pushAndRemoveUntil(
-            //   context, 
-            //   MaterialPageRoute(builder: (context) => GetawayScreen()),
-            //   (route) => false
-            // );
-            print("Navigating to Gateway. User Exists: ${response['user_exists']}");
+            Navigator.pushAndRemoveUntil(
+              context, 
+              MaterialPageRoute(
+                builder: (context) => SecurityGatewayScreen(uuid: response['uuid'] ?? "")
+              ),
+              (route) => false,
+            );
           }
         });
       } else {
         _showStatus(response['message'] ?? "Invalid code", isError: true);
+        _clearOtp();
       }
     } catch (e) {
-      _showStatus("System error. Try again.", isError: true);
+      _showStatus("Server connection failed.", isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _clearOtp() {
+    for (var controller in _controllers) controller.clear();
+    _focusNodes[0].requestFocus();
   }
 
   @override
@@ -150,39 +154,21 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.verified_user_outlined, size: 50, color: Color(0xFF3F51B5)),
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Color(0xFF3F51B5).withOpacity(0.1), shape: BoxShape.circle),
+                    child: Icon(Icons.security_update_good, size: 40, color: Color(0xFF3F51B5)),
+                  ),
                   SizedBox(height: 24),
-                  Text("Verify Account", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
+                  Text("Verification", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
                   SizedBox(height: 12),
-                  Text("Enter code sent to ${widget.mobile}", textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey[400], fontSize: 14)),
+                  Text("We've sent a code to\n${widget.mobile}", textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey[400], fontSize: 14)),
                   SizedBox(height: 35),
                   
+                  // OTP Box Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(6, (index) => SizedBox(
-                      width: (containerWidth - 110) / 6,
-                      child: TextField(
-                        controller: _controllers[index],
-                        focusNode: _focusNodes[index],
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        maxLength: 1,
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF3F51B5)),
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: InputDecoration(
-                          counterText: "",
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF00C853), width: 2)),
-                        ),
-                        onChanged: (value) {
-                          if (value.length == 1 && index < 5) _focusNodes[index + 1].requestFocus();
-                          if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
-                          if (index == 5 && value.length == 1) _verifyOTP();
-                        },
-                      ),
-                    )),
+                    children: List.generate(6, (index) => _buildOtpBox(index, containerWidth)),
                   ),
                   
                   SizedBox(height: 40),
@@ -198,14 +184,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                         elevation: 0,
                       ),
                       child: _isLoading 
-                        ? CircularProgressIndicator(color: Colors.white)
-                        : Text("VERIFY & CONTINUE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ? SizedBox(height: 25, width: 25, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text("VERIFY & PROCEED", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
                     ),
                   ),
                   
                   SizedBox(height: 30),
                   _timeLeft > 0 
-                    ? Text("Resend available in ${_timeLeft}s", style: TextStyle(color: Colors.grey))
+                    ? Text("Resend available in ${_timeLeft}s", style: TextStyle(color: Colors.blueGrey[300], fontWeight: FontWeight.w500))
                     : TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: Text("Edit Number / Resend", style: TextStyle(color: Color(0xFF3F51B5), fontWeight: FontWeight.bold)),
@@ -215,6 +201,33 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildOtpBox(int index, double containerWidth) {
+    return SizedBox(
+      width: (containerWidth - 110) / 6,
+      child: TextField(
+        controller: _controllers[index],
+        focusNode: _focusNodes[index],
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        maxLength: 1,
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF3F51B5)),
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(
+          counterText: "",
+          filled: true,
+          fillColor: Colors.grey[50],
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF00C853), width: 2)),
+        ),
+        onChanged: (value) {
+          if (value.length == 1 && index < 5) _focusNodes[index + 1].requestFocus();
+          if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
+          if (index == 5 && value.length == 1) _verifyOTP();
+        },
       ),
     );
   }
