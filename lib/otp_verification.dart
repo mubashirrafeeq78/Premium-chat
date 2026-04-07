@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 import 'api_service.dart';
+import 'config.dart';
+// یہاں اپنی گیٹ وے فائل امپورٹ کریں
+// import 'getaway.dart'; 
 
 class OTPVerificationScreen extends StatefulWidget {
   final String mobile;
@@ -12,12 +16,11 @@ class OTPVerificationScreen extends StatefulWidget {
 
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   // 6 ہندسوں کے لیے کنٹرولرز اور فوکس نوڈس
-  List<TextEditingController> controllers = List.generate(6, (index) => TextEditingController());
-  List<FocusNode> focusNodes = List.generate(6, (index) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   
   bool _isLoading = false;
-  String? _errorMessage;
-  int _timeLeft = 120; // 2 منٹ کا ٹائمر
+  int _timeLeft = 120; // 2 منٹ (120 سیکنڈ)
   Timer? _timer;
 
   @override
@@ -29,13 +32,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   @override
   void dispose() {
     _timer?.cancel();
-    for (var controller in controllers) controller.dispose();
+    for (var controller in _controllers) controller.dispose();
+    for (var node in _focusNodes) node.dispose();
     super.dispose();
   }
 
-  // ٹائمر شروع کرنے کا فنکشن
   void _startTimer() {
-    _timeLeft = 120;
+    _timer?.cancel();
+    setState(() => _timeLeft = 120);
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (_timeLeft > 0) {
         setState(() => _timeLeft--);
@@ -45,160 +49,174 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     });
   }
 
-  // لال بارڈر والا ایرر پاپ اپ (3 سیکنڈ)
-  void _showError(String message) {
-    setState(() { _errorMessage = message; });
-    Timer(Duration(seconds: 3), () {
-      if (mounted) setState(() { _errorMessage = null; });
-    });
+  // خوبصورت اسٹیٹس میسج (3 سیکنڈ کے لیے)
+  void _showStatus(String message, {required bool isError}) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: Duration(seconds: 3),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          padding: EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: isError ? Color(0xFFFFEBEE) : Color(0xFFE8F5E9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isError ? Colors.redAccent : Colors.green, width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Icon(isError ? Icons.error_outline : Icons.check_circle_outline, 
+                   color: isError ? Colors.red : Colors.green),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(color: isError ? Colors.red[900] : Colors.green[900], fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  // او ٹی پی ویریفائی کرنے کا فنکشن
-  void _verifyOTP() async {
-    String otp = controllers.map((e) => e.text).join();
+  Future<void> _verifyOTP() async {
+    String otp = _controllers.map((e) => e.text).join();
     if (otp.length < 6) {
-      _showError("براہ کرم تمام 6 ہندسے درج کریں۔");
+      _showStatus("Please enter the complete 6-digit code", isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.postRequest('verify-otp', {
+      final response = await ApiService.postRequest(AppConfig.verifyOtp, {
         'mobile': widget.mobile,
         'otp': otp,
       });
 
-      setState(() => _isLoading = false);
-
       if (response['status'] == 'success') {
-        if (response['user_exists'] == true) {
-          // اگر یوزر پہلے سے موجود ہے تو ڈیش بورڈ پر بھیجیں
-          print("User UUID: ${response['uuid']}");
-          // Navigator.pushReplacementNamed(context, '/dashboard');
-        } else {
-          // اگر نیا یوزر ہے تو پروفائل سیٹ اپ پر بھیجیں
-          // Navigator.pushReplacementNamed(context, '/profile-setup');
-        }
+        _showStatus("Account verified successfully!", isError: false);
+        
+        // 2 سیکنڈ بعد Gateway اسکرین پر منتقلی
+        Future.delayed(Duration(seconds: 2), () {
+          // Navigator.pushAndRemoveUntil(
+          //   context, 
+          //   MaterialPageRoute(builder: (context) => GetawayScreen()),
+          //   (route) => false
+          // );
+          print("Navigating to Gateway Screen..."); 
+        });
       } else {
-        _showError(response['message'] ?? "غلط او ٹی پی کوڈ۔");
+        _showStatus(response['message'] ?? "Invalid code. Please try again.", isError: true);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showError("کنکشن فیل: سرور سے رابطہ نہیں ہو سکا۔");
+      _showStatus("Connection error. Verification failed.", isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double containerWidth = screenWidth > 600 ? 450 : screenWidth * 0.9;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFE5F8ED), Color(0xFFFCFBE1)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE0F2F1), Color(0xFFF1F8E9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
-        child: Stack(
-          children: [
-            Center(
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20)],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text("Verify OTP", style: TextStyle(color: Color(0xFF4A55A2), fontSize: 26, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
-                    Text("We've sent a 6-digit code to \n${widget.mobile}", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                    SizedBox(height: 30),
-                    
-                    // 6 ہندسوں کے ان پٹ باکسز
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(6, (index) => SizedBox(
-                        width: 45,
-                        child: TextField(
-                          controller: controllers[index],
-                          focusNode: focusNodes[index],
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          maxLength: 1,
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          decoration: InputDecoration(
-                            counterText: "",
-                            filled: true,
-                            fillColor: Color(0xFFF9F9F9),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
-                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF00C853), width: 2)),
-                          ),
-                          onChanged: (value) {
-                            if (value.isNotEmpty && index < 5) focusNodes[index + 1].requestFocus();
-                            if (value.isEmpty && index > 0) focusNodes[index - 1].requestFocus();
-                          },
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              width: containerWidth,
+              padding: EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 25, offset: Offset(0, 10))],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.mark_email_read_outlined, size: 50, color: Color(0xFF3F51B5)),
+                  SizedBox(height: 24),
+                  Text("Verification", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
+                  SizedBox(height: 12),
+                  Text("Enter the 6-digit code sent to\n${widget.mobile}", textAlign: TextAlign.center, style: TextStyle(color: Colors.blueGrey[400], fontSize: 14)),
+                  SizedBox(height: 35),
+                  
+                  // OTP Input Fields
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(6, (index) => SizedBox(
+                      width: (containerWidth - 100) / 6,
+                      child: TextField(
+                        controller: _controllers[index],
+                        focusNode: _focusNodes[index],
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        maxLength: 1,
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF3F51B5)),
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        decoration: InputDecoration(
+                          counterText: "",
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Color(0xFF00C853), width: 2)),
                         ),
-                      )),
-                    ),
-                    
-                    SizedBox(height: 35),
-                    ElevatedButton(
+                        onChanged: (value) {
+                          if (value.length == 1 && index < 5) _focusNodes[index + 1].requestFocus();
+                          if (value.isEmpty && index > 0) _focusNodes[index - 1].requestFocus();
+                          if (index == 5 && value.length == 1) _verifyOTP(); // آخری ہندسہ پر خودکار تصدیق
+                        },
+                      ),
+                    )),
+                  ),
+                  
+                  SizedBox(height: 40),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: ElevatedButton(
                       onPressed: _isLoading ? null : _verifyOTP,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF00C853),
-                        minimumSize: Size(double.infinity, 55),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                       ),
                       child: _isLoading 
-                        ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text("Verify Account", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        ? SizedBox(height: 25, width: 25, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text("VERIFY ACCOUNT", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
                     ),
-                    
-                    SizedBox(height: 25),
-                    
-                    // ٹائمر اور ری سینڈ بٹن
-                    _timeLeft > 0 
-                      ? Text("Wait ${_timeLeft}s to resend", style: TextStyle(color: Colors.grey))
-                      : TextButton(
-                          onPressed: () {
-                            Navigator.pop(context); // واپس جا کر دوبارہ نمبر بھیجیں
-                          },
-                          child: Text("Edit Number / Resend OTP", style: TextStyle(color: Color(0xFF4A55A2), fontWeight: FontWeight.bold)),
-                        ),
-                  ],
-                ),
+                  ),
+                  
+                  SizedBox(height: 30),
+                  
+                  // Timer & Resend Logic
+                  _timeLeft > 0 
+                    ? Text("Resend code in ${_timeLeft}s", style: TextStyle(color: Colors.blueGrey[300], fontWeight: FontWeight.w500))
+                    : TextButton(
+                        onPressed: () {
+                          Navigator.pop(context); // واپس جا کر دوبارہ نمبر بھیجیں
+                        },
+                        child: Text("Didn't receive? Resend Code", style: TextStyle(color: Color(0xFF3F51B5), fontWeight: FontWeight.bold)),
+                      ),
+                ],
               ),
             ),
-            
-            // مخصوص ریڈ ایرر پاپ اپ
-            if (_errorMessage != null)
-              Positioned(
-                top: 60, left: 30, right: 30,
-                child: Container(
-                  padding: EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red, width: 2),
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: Colors.red),
-                      SizedBox(width: 10),
-                      Expanded(child: Text(_errorMessage!, style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
-                    ],
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
