@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'config.dart';
 import 'api_service.dart';
+// اپنی OTP اسکرین فائل کو یہاں امپورٹ کریں
+// import 'otp_verification.dart'; 
 
 class AuthScreen extends StatefulWidget {
   @override
@@ -14,132 +15,208 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLoading = false;
 
   Future<void> sendOtp() async {
-    // 1. Validation Check
-    if (_phoneController.text.length != 11) {
-      _showSnackBar("براہ کرم 11 ہندسوں کا درست نمبر درج کریں", Colors.red);
+    // بنیادی تصدیق
+    if (_phoneController.text.length < 10) {
+      _showStatusMessage("Please enter a valid phone number", isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
 
-    // --- اصل جڑ پکڑنے کے لیے ٹریکنگ یہاں سے شروع ہوتی ہے ---
-    print("--- DEBUG START ---");
-    print("Step 1: Button Clicked. Number: ${_phoneController.text}");
-    
     try {
-      final fullUrl = "${AppConfig.baseUrl}${AppConfig.auth}";
-      print("Step 2: Sending Request to: $fullUrl");
-      print("Step 3: Headers: {'x-api-key': ${AppConfig.apiKey}}");
-
-      // اے پی آئی کال
       final response = await ApiService.postRequest(
         AppConfig.auth, 
         {"mobile": _phoneController.text}
       );
 
-      print("Step 4: Server Response Received: $response");
-
       if (response['status'] == 'success') {
-        print("RESULT: SUCCESS");
-        _showSnackBar(response['message'] ?? "او ٹی پی بھیج دیا گیا ہے", Colors.green);
+        _showStatusMessage("Verification code sent successfully!", isError: false);
+        
+        // 2 سیکنڈ بعد اگلی اسکرین پر بھیج دیں
+        Future.delayed(Duration(seconds: 2), () {
+          // Navigator.push(
+          //   context, 
+          //   MaterialPageRoute(builder: (context) => OtpVerifyScreen(phone: _phoneController.text))
+          // );
+          print("Navigating to OTP Screen..."); // ابھی کے لیے صرف پرنٹ
+        });
       } else {
-        print("RESULT: SERVER RETURNED ERROR -> ${response['message']}");
-        _showSnackBar("سرور کی طرف سے پیغام: ${response['message']}", Colors.orange);
+        // سیکیورٹی کے لیے صرف سادہ ایرر دکھائیں
+        _showStatusMessage(response['message'] ?? "Authentication failed. Please try again.", isError: true);
       }
     } catch (e) {
-      // اگر ریکویسٹ سرور تک نہ پہنچے تو یہاں پتہ چلے گا
-      print("--- CRITICAL ERROR ---");
-      print("Step 5: Catch Block Triggered.");
-      print("Error Type: ${e.runtimeType}");
-      print("Actual Error: $e");
-      
-      // جڑ پکڑنے کے لیے مخصوص پیغامات
-      String errorMessage = e.toString();
-      if (errorMessage.contains('XMLHttpRequest')) {
-        errorMessage = "براؤزر نے ریکویسٹ بلاک کر دی (CORS issue)";
-      } else if (errorMessage.contains('HandshakeException')) {
-        errorMessage = "سیکیورٹی سرٹیفکیٹ (SSL) کا مسئلہ ہے";
-      } else if (errorMessage.contains('SocketException')) {
-        errorMessage = "انٹرنیٹ یا سرور کا ایڈریس درست نہیں ہے";
-      }
-      
-      _showSnackBar("اصل مسئلہ: $errorMessage", Colors.red);
+      // ہیکرز کو تکنیکی معلومات دینے کے بجائے عام میسج دکھائیں
+      _showStatusMessage("Connection error. Please check your internet.", isError: true);
     } finally {
-      print("--- DEBUG END ---");
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showSnackBar(String message, Color color) {
+  // خوبصورت اور مختصر میسج دکھانے کا فنکشن
+  void _showStatusMessage(String message, {required bool isError}) {
+    ScaffoldMessenger.of(context).clearSnackBars(); // پرانے میسجز ہٹائیں
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: TextStyle(fontFamily: 'sans-serif')),
-        backgroundColor: color,
-        duration: Duration(seconds: 5), // وقت بڑھا دیا تاکہ آپ پڑھ سکیں
-        action: SnackBarAction(label: "ٹھیک ہے", textColor: Colors.white, onPressed: () {}),
+        duration: Duration(seconds: 3),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: isError ? Color(0xFFFFEBEE) : Color(0xFFE8F5E9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isError ? Colors.redAccent : Colors.green,
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(isError ? Icons.error_outline : Icons.check_circle_outline, 
+                   color: isError ? Colors.red : Colors.green),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: isError ? Colors.red[900] : Colors.green[900],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // ڈیزائن وہی رہے گا جو آپ نے پسند کیا تھا
+    // اسکرین کی چوڑائی معلوم کریں تاکہ ریسپونسیو ڈیزائن بن سکے
+    double screenWidth = MediaQuery.of(context).size.width;
+    double containerWidth = screenWidth > 600 ? 450 : screenWidth * 0.9;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFD4EAE2), Color(0xFFFAFBEC)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFE0F2F1), Color(0xFFF1F8E9)],
           ),
         ),
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 25.0),
-            child: SingleChildScrollView(
-              child: Container(
-                padding: EdgeInsets.all(25),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(25),
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 10))],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("👋 ", style: TextStyle(fontSize: 24)),
-                        Text("Welcome!", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF3F51B5))),
-                      ],
+          child: SingleChildScrollView(
+            child: Container(
+              width: containerWidth,
+              padding: EdgeInsets.all(32),
+              margin: EdgeInsets.symmetric(vertical: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 25,
+                    offset: Offset(0, 10),
+                  )
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // لوگو یا آئیکن کے لیے جگہ
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF3F51B5).withOpacity(0.1),
+                      shape: BoxShape.circle,
                     ),
-                    SizedBox(height: 10),
-                    Text("Enter your 11-digit mobile number to proceed.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                    SizedBox(height: 25),
-                    TextField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [LengthLimitingTextInputFormatter(11), FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(
-                        hintText: "e.g., 03XXXXXXXXX",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                    child: Icon(Icons.lock_person_rounded, size: 40, color: Color(0xFF3F51B5)),
+                  ),
+                  SizedBox(height: 24),
+                  Text(
+                    "Secure Login",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C3E50),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    "Global Authentication System",
+                    style: TextStyle(color: Colors.blueGrey[400], fontSize: 14),
+                  ),
+                  SizedBox(height: 35),
+                  
+                  // ان پٹ فیلڈ
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(15), // عالمی نمبرز کے لیے حد بڑھا دی
+                    ],
+                    decoration: InputDecoration(
+                      labelText: "Mobile Number",
+                      hintText: "Enter with country code",
+                      prefixIcon: Icon(Icons.phone_android_rounded, color: Color(0xFF3F51B5)),
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: Colors.grey.shade100),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: Color(0xFF3F51B5), width: 2),
                       ),
                     ),
-                    SizedBox(height: 25),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : sendOtp,
-                        style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF00C853), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                        child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text("Continue", style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                  SizedBox(height: 30),
+                  
+                  // بٹن
+                  SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : sendOtp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF00C853),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                       ),
+                      child: _isLoading
+                          ? SizedBox(
+                              height: 25,
+                              width: 25,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : Text(
+                              "GET OTP",
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                            ),
                     ),
-                  ],
-                ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    "By proceeding, you agree to our Terms",
+                    style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                  ),
+                ],
               ),
             ),
           ),
