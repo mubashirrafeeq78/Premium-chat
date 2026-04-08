@@ -5,7 +5,7 @@ import 'api_service.dart';
 import 'config.dart';
 
 class SecurityGatewayScreen extends StatefulWidget {
-  final String uuid; // پچھلی اسکرین سے UUID آئے گی
+  final String uuid; 
   SecurityGatewayScreen({required this.uuid});
 
   @override
@@ -17,7 +17,7 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
   final List<FocusNode> _focusNodes = List.generate(5, (index) => FocusNode());
   
   bool _isLoading = false;
-  String? _accountStatus; // pending, approved, blocked, active
+  String? _accountStatus; 
   String? _userRole;
 
   @override
@@ -27,7 +27,6 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
     super.dispose();
   }
 
-  // میسج دکھانے کا فنکشن
   void _showSnack(String msg, bool isError) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -38,7 +37,6 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
     );
   }
 
-  // سیکیورٹی گیٹ وے ویریفیکیشن
   Future<void> _verifyGateway({String subAction = ''}) async {
     String pin = _pinControllers.map((e) => e.text).join();
     if (pin.length < 5) return;
@@ -75,8 +73,8 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
   }
 
   void _navigateToDashboard() {
-    // یہاں اپنی ڈیش بورڈ لاجک لکھیں
     print("Navigating to $_userRole Dashboard...");
+    // یہاں اپنی نیویگیشن لاجک شامل کریں
   }
 
   @override
@@ -85,7 +83,6 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
       backgroundColor: Color(0xFFEFF3F6),
       body: Stack(
         children: [
-          // مین پن ان پٹ لیئر
           Center(
             child: SingleChildScrollView(
               child: Padding(
@@ -104,7 +101,6 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
                     ),
                     SizedBox(height: 48),
                     
-                    // PIN Inputs
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: List.generate(5, (index) => _buildPinBox(index)),
@@ -124,7 +120,14 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
                         ),
                         child: _isLoading 
                           ? CircularProgressIndicator(color: Colors.white)
-                          : Text("UNLOCK SYSTEM", style: TextStyle(color: Colors.white, fontWeight: FontWeight.black, letterSpacing: 1.5)),
+                          : Text(
+                              "UNLOCK SYSTEM", 
+                              style: TextStyle(
+                                color: Colors.white, 
+                                fontWeight: FontWeight.w900, // یہاں FontWeight.black کی جگہ w900 استعمال کیا گیا ہے
+                                letterSpacing: 1.5
+                              ),
+                            ),
                       ),
                     ),
                   ],
@@ -133,7 +136,6 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
             ),
           ),
 
-          // اسٹیٹس اوورلے (اگر اکاؤنٹ ایکٹیو نہ ہو)
           if (_accountStatus != null && _accountStatus != 'active')
             _buildStatusOverlay(),
         ],
@@ -141,7 +143,6 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
     );
   }
 
-  // پن باکس ڈیزائن
   Widget _buildPinBox(int index) {
     return Container(
       width: 55,
@@ -149,8 +150,14 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _focusNodes[index].hasFocus ? Color(0xFF3B4CA8) : Color(0xFFE2E8F0), width: 2),
-        boxShadow: [if(_focusNodes[index].hasFocus) BoxShadow(color: Color(0xFF3B4CA8).withOpacity(0.1), blurRadius: 20)],
+        border: Border.all(
+          color: _focusNodes[index].hasFocus ? Color(0xFF3B4CA8) : Color(0xFFE2E8F0), 
+          width: 2
+        ),
+        boxShadow: [
+          if(_focusNodes[index].hasFocus) 
+            BoxShadow(color: Color(0xFF3B4CA8).withOpacity(0.1), blurRadius: 20)
+        ],
       ),
       child: TextField(
         controller: _pinControllers[index],
@@ -174,7 +181,6 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
     );
   }
 
-  // اسٹیٹس کارڈ (Pending/Approved/Blocked)
   Widget _buildStatusOverlay() {
     IconData icon = Icons.hourglass_empty;
     Color iconBg = Colors.orange;
@@ -195,7 +201,10 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
       msg = "Great news! Your profile is verified. Click below to enter your workspace.";
       footer = ElevatedButton(
         onPressed: () => _verifyGateway(subAction: 'activate_now'),
-        style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF3B4CA8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xFF3B4CA8), 
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
+        ),
         child: Text("ENTER DASHBOARD", style: TextStyle(color: Colors.white)),
       );
     } else if (_accountStatus == 'blocked') {
@@ -215,7 +224,11 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
         child: Container(
           width: 360,
           padding: EdgeInsets.all(32),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20)]),
+          decoration: BoxDecoration(
+            color: Colors.white, 
+            borderRadius: BorderRadius.circular(32), 
+            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20)]
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
