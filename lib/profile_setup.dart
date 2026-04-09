@@ -179,6 +179,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
 
                   SizedBox(height: 25),
+                  // تبدیلی یہاں کی گئی ہے: FontWeight.black کی جگہ FontWeight.w900
                   Text("SET 5-DIGIT SECURITY PIN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey)),
                   SizedBox(height: 10),
                   Row(
