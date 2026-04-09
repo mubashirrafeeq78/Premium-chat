@@ -1,11 +1,17 @@
 class AppConfig {
+  // یہ لائن براؤزر کی سیکیورٹی (CORS) کو بائی پاس کرنے کے لیے ہے
   static const String _proxy = "https://corsproxy.io/?"; 
+
+  // آپ کا اصل سرور یو آر ایل (پروکسی کے ساتھ جوڑ دیا گیا ہے)
   static const String baseUrl = "${_proxy}https://paxochat.com"; 
+
+  // آپ کی مخصوص سیکیورٹی کی
   static const String apiKey = "PixoChat_Master_Secure_2026";
 
-  // اسے اب 'register-new-user' کر دیں کیونکہ آپ کی فائل کا نام یہی ہے
-  static const String profileSetup = "/register-new-user";
-  
+  // اینڈ پوائنٹس (بیک اینڈ کی فائلوں کے نام)
   static const String auth = "/auth";
   static const String verifyOtp = "/verify-otp";
+
+  // صرف یہ نئی لائن شامل کی گئی ہے تاکہ باقی پروجیکٹ متاثر نہ ہو
+  static const String registerUser = "/register-new-user";
 }
