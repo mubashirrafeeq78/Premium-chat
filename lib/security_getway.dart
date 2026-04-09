@@ -44,7 +44,8 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await ApiService.postRequest('security_getway', {
+      // یہاں تبدیلی کی گئی ہے: براہ راست اینڈ پوائنٹ کا نام استعمال کیا گیا ہے
+      final response = await ApiService.postRequest('/security_getway', {
         'action': 'verify_gateway_access',
         'uuid': widget.uuid,
         'pin': pin,
@@ -73,8 +74,8 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
   }
 
   void _navigateToDashboard() {
+    // یہاں اپنی ڈیش بورڈ نیویگیشن لاجک شامل کریں
     print("Navigating to $_userRole Dashboard...");
-    // یہاں اپنی نیویگیشن لاجک شامل کریں
   }
 
   @override
@@ -124,7 +125,7 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
                               "UNLOCK SYSTEM", 
                               style: TextStyle(
                                 color: Colors.white, 
-                                fontWeight: FontWeight.w900, // یہاں FontWeight.black کی جگہ w900 استعمال کیا گیا ہے
+                                fontWeight: FontWeight.w900, 
                                 letterSpacing: 1.5
                               ),
                             ),
