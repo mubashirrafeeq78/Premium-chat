@@ -4,35 +4,31 @@ import 'config.dart';
 
 class ApiService {
   static Future<Map<String, dynamic>> postRequest(String endpoint, Map<String, dynamic> body) async {
-    // یو آر ایل بنانا
-    final url = Uri.parse("${AppConfig.baseUrl}$endpoint");
+    // 1. مکمل یو آر ایل بنانا
+    final String fullUrl = "${AppConfig.baseUrl}$endpoint";
+    
+    // ڈیبگنگ کے لیے: یہ لائن بتائے گی کہ کال کہاں جا رہی ہے
+    print("🚀 Sending Request to: $fullUrl");
+    print("📦 Data: ${jsonEncode(body)}");
 
     try {
       final response = await http.post(
-        url,
+        Uri.parse(fullUrl),
         headers: {
           "Content-Type": "application/json",
           "x-api-key": AppConfig.apiKey,
-          // ویب کے لیے یہ ہیڈرز ضروری ہو سکتے ہیں
-          "Accept": "application/json",
         },
         body: jsonEncode(body),
       );
 
-      // جواب کو چیک کریں
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        return {
-          "status": "error",
-          "message": "سرور کا جواب: ${response.statusCode}\n${response.body}"
-        };
-      }
+      // سرور سے جو بھی جواب آئے گا، اسے کنسول میں پرنٹ کریں تاکہ سچائی سامنے آئے
+      print("📡 Server Response Code: ${response.statusCode}");
+      print("📝 Server Body: ${response.body}");
+
+      return jsonDecode(response.body);
     } catch (e) {
-      return {
-        "status": "error",
-        "message": "کنکشن کا مسئلہ: $e"
-      };
+      print("❌ Connection Error: $e");
+      return {"status": "error", "message": "کنکشن کا مسئلہ: $e"};
     }
   }
 }
