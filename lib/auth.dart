@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'config.dart';
-import 'api_service.dart';
+import 'config.dart'; // آپ کی نئی کنفیگ فائل
 import 'otp_verification.dart'; 
 
 class AuthScreen extends StatefulWidget {
@@ -22,9 +21,10 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // یہاں تبدیلی کی گئی ہے: براہ راست اینڈ پوائنٹ کا نام استعمال کیا گیا ہے
-      final response = await ApiService.postRequest(
-        '/auth', 
+      // --- نئی ترتیب کا استعمال ---
+      // اب ہم براہ راست اینڈ پوائنٹ نہیں لکھیں گے بلکہ گیٹ وے کو 'Key' بھیجیں گے
+      final response = await Config.send(
+        'auth_screen', 
         {"mobile": _phoneController.text}
       );
 
@@ -51,6 +51,7 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  // باقی تمام ڈیزائن اور فنکشنز (جوں کے توں)
   void _showStatusMessage(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).clearSnackBars(); 
     ScaffoldMessenger.of(context).showSnackBar(
