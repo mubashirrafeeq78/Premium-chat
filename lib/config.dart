@@ -7,11 +7,10 @@ class ApiGateway {
 
   // 2. آپ کی پسندیدہ میپنگ لسٹ (بریکٹس کے ساتھ)
   static const String _LIST = """
-    {auth_screen > /auth}
+    {auth> /auth}
     {otp_verification > /verify-otp}
     {profile_setup > /register-new-user}
-    {security_gateway > /security_getway}
-    {provider_dashboard > /provider_dashboard}
+    {security_gateway > /security_getway} 
   """;
 
   // 3. مرکزی فنکشن جو ڈیٹا بھیجے گا
