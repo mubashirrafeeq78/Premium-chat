@@ -1,4 +1,4 @@
-import 'dart:convert';
+authhort 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class Config {
@@ -8,7 +8,7 @@ class Config {
 
   // 2. آپ کی میپنگ لسٹ (جوں کی توں)
   static const String _LIST = """
-    {auth > /auth}
+    {auth_screen > /auth}
     {otp_verification > /verify-otp}
     {profile_setup > /register-new-user}
     {security_gateway > /security_getway} 
