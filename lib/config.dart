@@ -10,7 +10,7 @@ class ApiGateway {
     {auth> /auth}
     {otp_verification > /verify-otp}
     {profile_setup > /register-new-user}
-    {security_gateway > /security_getway} 
+    {security_getway > /security_getway} 
   """;
 
   // 3. مرکزی فنکشن جو ڈیٹا بھیجے گا
