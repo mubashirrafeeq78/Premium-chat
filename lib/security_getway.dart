@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-import 'api_service.dart';
+// ApiService کی جگہ اب Config استعمال ہوگا
 import 'config.dart';
 
 class SecurityGatewayScreen extends StatefulWidget {
@@ -44,8 +44,9 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // یہاں تبدیلی کی گئی ہے: براہ راست اینڈ پوائنٹ کا نام استعمال کیا گیا ہے
-      final response = await ApiService.postRequest('/security_getway', {
+      // --- نئی ترتیب کا استعمال ---
+      // اب یہاں براہ راست اینڈ پوائنٹ کے بجائے 'security_gateway' کی (Key) استعمال ہوگی
+      final response = await Config.send('security_gateway', {
         'action': 'verify_gateway_access',
         'uuid': widget.uuid,
         'pin': pin,
@@ -74,8 +75,8 @@ class _SecurityGatewayScreenState extends State<SecurityGatewayScreen> {
   }
 
   void _navigateToDashboard() {
-    // یہاں اپنی ڈیش بورڈ نیویگیشن لاجک شامل کریں
     print("Navigating to $_userRole Dashboard...");
+    // یہاں اپنی ڈیش بورڈ نیویگیشن لاجک شامل کریں
   }
 
   @override
