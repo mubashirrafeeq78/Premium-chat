@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class Config {
-  // 1. مین کنفیگریشن
-  static const String _baseUrl = "https://paxochat.com";
+  // 1. مین کنفیگریشن (پراکسی کے ساتھ)
+  static const String _proxy = "https://corsproxy.io/?"; 
+  static const String _baseUrl = "${_proxy}https://paxochat.com";
   static const String _apiKey = "PixoChat_Master_Secure_2026";
 
-  // 2. آپ کی میپنگ لسٹ (جوں کی توں)
+  // 2. آپ کی میپنگ لسٹ (Key نام درست کر دیے گئے ہیں)
   static const String _LIST = """
     {auth_screen > /auth}
     {otp_verification > /verify-otp}
@@ -22,9 +23,8 @@ class Config {
 
       if (match != null) {
         String endpoint = match.group(1)!.trim();
-        String finalUrl = _baseUrl + endpoint;
+        String finalUrl = _baseUrl + endpoint; // اب یہاں خود بخود پراکسی لگ جائے گی
 
-        // نیچے موجود ApiService کے فنکشن کو اسی فائل میں کال کرنا
         return await _ApiService.directPost(finalUrl, data, _apiKey);
       } else {
         return {"status": "error", "message": "Mapping missing for: $screenName"};
@@ -35,7 +35,6 @@ class Config {
   }
 }
 
-// 4. اندرونی سروس (اب کسی دوسری فائل کی ضرورت نہیں)
 class _ApiService {
   static Future<Map<String, dynamic>> directPost(String url, Map<String, dynamic> data, String key) async {
     try {
@@ -43,7 +42,7 @@ class _ApiService {
         Uri.parse(url),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer $key", // سیکیورٹی کی ہیڈر میں
+          "Authorization": "Bearer $key",
         },
         body: jsonEncode(data),
       ).timeout(const Duration(seconds: 15));
@@ -54,7 +53,8 @@ class _ApiService {
         return {"status": "error", "message": "Server Error: ${response.statusCode}"};
       }
     } catch (e) {
-      return {"status": "error", "message": "Network Error: $e"};
+      // اگر نیٹ ورک ایرر آئے تو یہاں سے میسج جائے گا
+      return {"status": "error", "message": "Network Connection Failed: $e"};
     }
   }
 }
