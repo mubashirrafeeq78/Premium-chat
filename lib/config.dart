@@ -4,10 +4,10 @@ import 'package:http/http.dart' as http;
 class Config {
   // 1. مین کنفیگریشن (پراکسی کے ساتھ)
   static const String _proxy = "https://corsproxy.io/?"; 
-  static const String _baseUrl = "${_proxy}https://paxochat.com";
+  static const String _baseUrl = "${_proxy}https://paxochat.com"; 
   static const String _apiKey = "PixoChat_Master_Secure_2026";
 
-  // 2. آپ کی میپنگ لسٹ (Key نام درست کر دیے گئے ہیں)
+  // 2. آپ کی میپنگ لسٹ
   static const String _LIST = """
     {auth_screen > /auth}
     {otp_verification > /verify-otp}
@@ -23,8 +23,9 @@ class Config {
 
       if (match != null) {
         String endpoint = match.group(1)!.trim();
-        String finalUrl = _baseUrl + endpoint; // اب یہاں خود بخود پراکسی لگ جائے گی
+        String finalUrl = _baseUrl + endpoint;
 
+        // نیچے موجود ApiService کو کال کرنا
         return await _ApiService.directPost(finalUrl, data, _apiKey);
       } else {
         return {"status": "error", "message": "Mapping missing for: $screenName"};
@@ -35,14 +36,18 @@ class Config {
   }
 }
 
+// 4. نیٹ ورک سروس
 class _ApiService {
   static Future<Map<String, dynamic>> directPost(String url, Map<String, dynamic> data, String key) async {
     try {
+      // سیکیورٹی کی کو براہ راست ڈیٹا میں شامل کرنا تاکہ پراکسی اسے بلاک نہ کرے
+      data['api_key'] = key;
+
       final response = await http.post(
         Uri.parse(url),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer $key",
+          // ہیڈرز کو سادہ رکھا گیا ہے تاکہ براؤزر اسے بلاک نہ کرے
         },
         body: jsonEncode(data),
       ).timeout(const Duration(seconds: 15));
@@ -50,11 +55,16 @@ class _ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        return {"status": "error", "message": "Server Error: ${response.statusCode}"};
+        return {
+          "status": "error", 
+          "message": "Server Error: ${response.statusCode}"
+        };
       }
     } catch (e) {
-      // اگر نیٹ ورک ایرر آئے تو یہاں سے میسج جائے گا
-      return {"status": "error", "message": "Network Connection Failed: $e"};
+      return {
+        "status": "error", 
+        "message": "Network Connection Failed: $e"
+      };
     }
   }
 }
