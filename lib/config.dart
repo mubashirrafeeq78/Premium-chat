@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class Config {
-  // 1. مین کنفیگریشن (پراکسی کے ساتھ)
+  // آپ کی وہی پرانی پراکسی جو پہلے کام کر رہی تھی
   static const String _proxy = "https://corsproxy.io/?"; 
   static const String _baseUrl = "${_proxy}https://paxochat.com"; 
   static const String _apiKey = "PixoChat_Master_Secure_2026";
 
-  // 2. آپ کی میپنگ لسٹ
+  // میپنگ لسٹ (auth_screen کے ساتھ)
   static const String _LIST = """
     {auth_screen > /auth}
     {otp_verification > /verify-otp}
@@ -15,7 +15,6 @@ class Config {
     {security_gateway > /security_getway} 
   """;
 
-  // 3. مرکزی فنکشن (Gateway)
   static Future<Map<String, dynamic>> send(String screenName, Map<String, dynamic> data) async {
     try {
       final RegExp regExp = RegExp('\{' + screenName + r'\s*>\s*([^}]+)\}');
@@ -25,7 +24,6 @@ class Config {
         String endpoint = match.group(1)!.trim();
         String finalUrl = _baseUrl + endpoint;
 
-        // نیچے موجود ApiService کو کال کرنا
         return await _ApiService.directPost(finalUrl, data, _apiKey);
       } else {
         return {"status": "error", "message": "Mapping missing for: $screenName"};
@@ -36,18 +34,18 @@ class Config {
   }
 }
 
-// 4. نیٹ ورک سروس
 class _ApiService {
   static Future<Map<String, dynamic>> directPost(String url, Map<String, dynamic> data, String key) async {
     try {
-      // سیکیورٹی کی کو براہ راست ڈیٹا میں شامل کرنا تاکہ پراکسی اسے بلاک نہ کرے
+      // اہم تبدیلی: سیکیورٹی کی کو براہ راست ڈیٹا باڈی میں شامل کیا گیا ہے
+      // تاکہ پراکسی اسے ڈراپ نہ کر سکے
       data['api_key'] = key;
 
       final response = await http.post(
         Uri.parse(url),
         headers: {
           "Content-Type": "application/json",
-          // ہیڈرز کو سادہ رکھا گیا ہے تاکہ براؤزر اسے بلاک نہ کرے
+          // یہاں کوئی کسٹم ہیڈر نہیں ہے تاکہ CORS کا مسئلہ نہ آئے
         },
         body: jsonEncode(data),
       ).timeout(const Duration(seconds: 15));
@@ -55,16 +53,14 @@ class _ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
+        // یہاں ہم سرور کا اصل جواب دکھائیں گے تاکہ پتہ چلے مسئلہ کیا ہے
         return {
           "status": "error", 
-          "message": "Server Error: ${response.statusCode}"
+          "message": "Server Error ${response.statusCode}: ${response.body}"
         };
       }
     } catch (e) {
-      return {
-        "status": "error", 
-        "message": "Network Connection Failed: $e"
-      };
+      return {"status": "error", "message": "Network Connection Failed: $e"};
     }
   }
 }
