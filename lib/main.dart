@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'chat_group.dart'; // آپ کی رجسٹریشن اسکرین والی فائل
+import 'chat_group.dart'; // اس فائل میں آپ کا چیٹ اور لاک اسکرین کا کوڈ ہے
 
 void main() {
   runApp(const MyApp());
@@ -11,14 +11,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PixoChat',
-      debugShowCheckedModeBanner: false, // کونے سے 'Debug' کا بینر ہٹانے کے لیے
+      title: 'مسائل شرعیہ',
+      debugShowCheckedModeBanner: false, 
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4A55A2)),
+        // واٹس ایپ جیسا پروفیشنل رنگ (Primary Green)
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF075E54)),
         useMaterial3: true,
+        fontFamily: 'NotoNaskhArabic', // اگر آپ نے اردو فانٹ ایڈ کیا ہے
       ),
-      // یہاں ہم نے بتایا ہے کہ ایپ کھلتے ہی سب سے پہلے 'AuthScreen' دکھائے
-      home: AuthScreen(), 
+      // اب ایپ کھلتے ہی سیدھا پن لاک اسکرین (ChatGroupPage) دکھائے گی
+      home: ChatGroupPage(), 
     );
   }
 }
