@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 
 class ChatGroupScreen extends StatefulWidget {
@@ -15,7 +14,7 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
   bool _isTyping = false;
   Map<String, dynamic>? _replyingTo;
   
-  // Dummy Data for Preview (As you said backend later)
+  // عارضی ڈیٹا جب تک بیک اینڈ کنیکٹ نہیں ہوتا
   List<Map<String, dynamic>> _messages = [
     {
       "id": "1",
@@ -57,9 +56,9 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF2F2F2),
+      backgroundColor: const Color(0xFFF2F2F2),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -68,22 +67,22 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
         ),
         child: Column(
           children: [
-            SizedBox(height: 40), // Top padding like your header spacer
+            const SizedBox(height: 40), 
             
-            // Chat Messages Area
+            // میسجز لسٹ
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
                 itemCount: _messages.length,
                 itemBuilder: (context, index) => _buildMessageBubble(_messages[index]),
               ),
             ),
 
-            // Reply UI
+            // ریپلائی بار
             if (_replyingTo != null) _buildReplyPreview(),
 
-            // Input Bar
+            // ان پٹ بار
             _buildInputBar(),
           ],
         ),
@@ -96,40 +95,49 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: EdgeInsets.symmetric(vertical: 5),
+        margin: const EdgeInsets.symmetric(vertical: 5),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
-          color: isMe ? Color(0xFFDCF8C6) : Colors.white,
+          color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.black.withOpacity(0.05)),
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
         ),
-        padding: EdgeInsets.all(10),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(msg['user'], style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF075E54))),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(msg['user'], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF075E54))),
+                GestureDetector(
+                  onTap: () => setState(() => _replyingTo = msg),
+                  child: const Icon(Icons.reply, size: 16, color: Colors.grey),
+                ),
+              ],
+            ),
             if (msg['replyTo'] != null)
               Container(
-                margin: EdgeInsets.only(top: 5, bottom: 5),
-                padding: EdgeInsets.all(6),
+                margin: const EdgeInsets.only(top: 5, bottom: 5),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.05),
-                  border: Border(left: BorderSide(color: Color(0xFF075E54), width: 4)),
+                  border: const Border(left: BorderSide(color: Color(0xFF075E54), width: 4)),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(msg['replyTo']['text'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
               ),
-            SizedBox(height: 5),
-            Text(msg['text'], style: TextStyle(fontSize: 15, color: Colors.black87)),
-            SizedBox(height: 5),
+            const SizedBox(height: 5),
+            Text(msg['text'], style: const TextStyle(fontSize: 15, color: Colors.black87)),
+            const SizedBox(height: 5),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(msg['time'], style: TextStyle(fontSize: 10, color: Colors.grey)),
+                Text(msg['time'], style: const TextStyle(fontSize: 10, color: Colors.grey)),
                 if (isMe) ...[
-                  SizedBox(width: 4),
-                  Icon(Icons.done_all, size: 16, color: Color(0xFF34B7F1)),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.done_all, size: 16, color: Color(0xFF34B7F1)),
                 ]
               ],
             ),
@@ -141,22 +149,22 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
 
   Widget _buildReplyPreview() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-      color: Color(0xFFE9E9E9),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+      color: const Color(0xFFE9E9E9),
       child: Row(
         children: [
-          Container(width: 4, height: 40, color: Color(0xFF075E54)),
-          SizedBox(width: 10),
+          Container(width: 4, height: 40, color: const Color(0xFF075E54)),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_replyingTo!['user'], style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF075E54), fontSize: 13)),
-                Text(_replyingTo!['text'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Colors.black54)),
+                Text(_replyingTo!['user'], style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF075E54), fontSize: 13)),
+                Text(_replyingTo!['text'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.black54)),
               ],
             ),
           ),
-          IconButton(icon: Icon(Icons.close, size: 20), onPressed: () => setState(() => _replyingTo = null)),
+          IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => setState(() => _replyingTo = null)),
         ],
       ),
     );
@@ -164,8 +172,8 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
 
   Widget _buildInputBar() {
     return Container(
-      padding: EdgeInsets.all(10),
-      color: Color(0xFFF0F0F0),
+      padding: const EdgeInsets.all(10),
+      color: const Color(0xFFF0F0F0),
       child: Row(
         children: [
           Expanded(
@@ -176,7 +184,7 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
               ),
               child: Row(
                 children: [
-                  IconButton(icon: Icon(Icons.attach_file, color: Color(0xFF667781)), onPressed: _showMediaOptions),
+                  IconButton(icon: const Icon(Icons.attach_file, color: Color(0xFF667781)), onPressed: _showMediaOptions),
                   Expanded(
                     child: TextField(
                       controller: _messageController,
@@ -185,7 +193,7 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
                         hintText: _isRecording ? "Recording ● 00:00" : "Type a message...",
                         border: InputBorder.none,
                         hintStyle: TextStyle(color: _isRecording ? Colors.red : Colors.grey),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                       ),
                     ),
                   ),
@@ -193,7 +201,7 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
               ),
             ),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           GestureDetector(
             onLongPress: () {
               if (!_isTyping) setState(() => _isRecording = true);
@@ -201,15 +209,14 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
             onLongPressUp: () {
               if (_isRecording) {
                 setState(() => _isRecording = false);
-                // logic to send voice would go here
               }
             },
             onTap: _isTyping ? _sendMessage : null,
             child: CircleAvatar(
               radius: 25,
-              backgroundColor: Color(0xFF25D366),
+              backgroundColor: const Color(0xFF25D366),
               child: Icon(
-                _isTyping ? Icons.send : (_isRecording ? Icons.mic : Icons.mic),
+                _isTyping ? Icons.send : Icons.mic,
                 color: Colors.white,
               ),
             ),
@@ -225,13 +232,13 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: 200,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: GridView.count(
           crossAxisCount: 3,
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           children: [
             _mediaIcon(Icons.image, "Gallery", Colors.purple),
             _mediaIcon(Icons.camera_alt, "Camera", Colors.red),
@@ -246,8 +253,8 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
     return Column(
       children: [
         CircleAvatar(radius: 30, backgroundColor: color, child: Icon(icon, color: Colors.white)),
-        SizedBox(height: 5),
-        Text(label, style: TextStyle(fontSize: 12)),
+        const SizedBox(height: 5),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
