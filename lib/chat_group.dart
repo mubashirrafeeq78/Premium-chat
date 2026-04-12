@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
 import 'dart:async';
+import 'dart:io';
 
 class ChatGroupScreen extends StatefulWidget {
   @override
@@ -9,56 +12,92 @@ class ChatGroupScreen extends StatefulWidget {
 class _ChatGroupScreenState extends State<ChatGroupScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  final ImagePicker _picker = ImagePicker();
   
   bool _isRecording = false;
   bool _isTyping = false;
   Map<String, dynamic>? _replyingTo;
-  
-  // عارضی ڈیٹا جب تک بیک اینڈ کنیکٹ نہیں ہوتا
+  int _recordDuration = 0;
+  Timer? _timer;
+
   List<Map<String, dynamic>> _messages = [
-    {
-      "id": "1",
-      "user": "System",
-      "text": "خوش آمدید! آپ یہاں مسائل شرعیہ پوچھ سکتے ہیں۔",
-      "isMe": false,
-      "type": "text",
-      "time": "10:00 AM"
-    },
+    {"id": "1", "user": "System", "text": "خوش آمدید! مسائل شرعیہ گروپ میں آپ کا خیر مقدم ہے۔", "isMe": false, "type": "text", "time": "10:00 AM"},
   ];
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
-    
+  // فوٹو یا ویڈیو سینڈ کرنے کی لاجک
+  Future<void> _pickMedia(ImageSource source, {bool isVideo = false}) async {
+    final XFile? file = isVideo 
+        ? await _picker.pickVideo(source: source) 
+        : await _picker.pickImage(source: source);
+
+    if (file != null) {
+      _addMessage(
+        text: isVideo ? "🎥 Video" : "🖼️ Photo",
+        type: isVideo ? "video" : "image",
+        mediaPath: file.path,
+      );
+      Navigator.pop(context); // باٹم شیٹ بند کرنے کے لیے
+    }
+  }
+
+  // وائس ریکارڈنگ شروع کرنا
+  Future<void> _startRecording() async {
+    try {
+      if (await _audioRecorder.hasPermission()) {
+        setState(() {
+          _isRecording = true;
+          _recordDuration = 0;
+        });
+        _timer = Timer.periodic(Duration(seconds: 1), (t) => setState(() => _recordDuration++));
+        await _audioRecorder.start(const RecordConfig(), path: 'recording.m4a');
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  // وائس ریکارڈنگ روکنا اور سینڈ کرنا
+  Future<void> _stopRecording() async {
+    _timer?.cancel();
+    final path = await _audioRecorder.stop();
+    setState(() => _isRecording = false);
+
+    if (path != null) {
+      _addMessage(text: "🎤 Voice Message", type: "voice", mediaPath: path);
+    }
+  }
+
+  void _addMessage({required String text, required String type, String? mediaPath}) {
     setState(() {
       _messages.add({
         "id": DateTime.now().toString(),
         "user": "You",
-        "text": _messageController.text,
+        "text": text,
         "isMe": true,
-        "type": "text",
+        "type": type,
+        "mediaPath": mediaPath,
         "time": "${DateTime.now().hour}:${DateTime.now().minute}",
         "replyTo": _replyingTo,
       });
-      _messageController.clear();
-      _isTyping = false;
       _replyingTo = null;
     });
-    
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
     Timer(Duration(milliseconds: 100), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      _scrollController.animateTo(_scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300), curve: Curves.easeOut);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F2),
+      backgroundColor: Color(0xFFF2F2F2),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -67,22 +106,16 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
         ),
         child: Column(
           children: [
-            const SizedBox(height: 40), 
-            
-            // میسجز لسٹ
+            SizedBox(height: 45),
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
                 itemCount: _messages.length,
                 itemBuilder: (context, index) => _buildMessageBubble(_messages[index]),
               ),
             ),
-
-            // ریپلائی بار
             if (_replyingTo != null) _buildReplyPreview(),
-
-            // ان پٹ بار
             _buildInputBar(),
           ],
         ),
@@ -95,51 +128,27 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 5),
+        margin: EdgeInsets.symmetric(vertical: 5),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
+          color: isMe ? Color(0xFFDCF8C6) : Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
         ),
-        padding: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(msg['user'], style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF075E54))),
-                GestureDetector(
-                  onTap: () => setState(() => _replyingTo = msg),
-                  child: const Icon(Icons.reply, size: 16, color: Colors.grey),
-                ),
-              ],
-            ),
-            if (msg['replyTo'] != null)
-              Container(
-                margin: const EdgeInsets.only(top: 5, bottom: 5),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.05),
-                  border: const Border(left: BorderSide(color: Color(0xFF075E54), width: 4)),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(msg['replyTo']['text'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+            Text(msg['user'], style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF075E54))),
+            if (msg['type'] == 'image') 
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(msg['mediaPath']))),
               ),
-            const SizedBox(height: 5),
-            Text(msg['text'], style: const TextStyle(fontSize: 15, color: Colors.black87)),
-            const SizedBox(height: 5),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(msg['time'], style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  const Icon(Icons.done_all, size: 16, color: Color(0xFF34B7F1)),
-                ]
-              ],
+            Text(msg['text'], style: TextStyle(fontSize: 15)),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Text(msg['time'], style: TextStyle(fontSize: 10, color: Colors.grey)),
             ),
           ],
         ),
@@ -147,53 +156,26 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
     );
   }
 
-  Widget _buildReplyPreview() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-      color: const Color(0xFFE9E9E9),
-      child: Row(
-        children: [
-          Container(width: 4, height: 40, color: const Color(0xFF075E54)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_replyingTo!['user'], style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF075E54), fontSize: 13)),
-                Text(_replyingTo!['text'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-              ],
-            ),
-          ),
-          IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => setState(() => _replyingTo = null)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.all(10),
-      color: const Color(0xFFF0F0F0),
+      padding: EdgeInsets.all(10),
+      color: Color(0xFFF0F0F0),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-              ),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
               child: Row(
                 children: [
-                  IconButton(icon: const Icon(Icons.attach_file, color: Color(0xFF667781)), onPressed: _showMediaOptions),
+                  IconButton(icon: Icon(Icons.attach_file, color: Color(0xFF667781)), onPressed: _showMediaOptions),
                   Expanded(
                     child: TextField(
                       controller: _messageController,
                       onChanged: (v) => setState(() => _isTyping = v.isNotEmpty),
                       decoration: InputDecoration(
-                        hintText: _isRecording ? "Recording ● 00:00" : "Type a message...",
+                        hintText: _isRecording ? "Recording... ${_recordDuration}s" : "Type a message...",
                         border: InputBorder.none,
-                        hintStyle: TextStyle(color: _isRecording ? Colors.red : Colors.grey),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 15),
                       ),
                     ),
                   ),
@@ -201,24 +183,19 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           GestureDetector(
-            onLongPress: () {
-              if (!_isTyping) setState(() => _isRecording = true);
-            },
-            onLongPressUp: () {
-              if (_isRecording) {
-                setState(() => _isRecording = false);
-              }
-            },
-            onTap: _isTyping ? _sendMessage : null,
+            onLongPress: _startRecording,
+            onLongPressUp: _stopRecording,
+            onTap: _isTyping ? () {
+              _addMessage(text: _messageController.text, type: "text");
+              _messageController.clear();
+              setState(() => _isTyping = false);
+            } : null,
             child: CircleAvatar(
               radius: 25,
-              backgroundColor: const Color(0xFF25D366),
-              child: Icon(
-                _isTyping ? Icons.send : Icons.mic,
-                color: Colors.white,
-              ),
+              backgroundColor: _isRecording ? Colors.red : Color(0xFF25D366),
+              child: Icon(_isTyping ? Icons.send : Icons.mic, color: Colors.white),
             ),
           ),
         ],
@@ -231,31 +208,33 @@ class _ChatGroupScreenState extends State<ChatGroupScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: 200,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: GridView.count(
-          crossAxisCount: 3,
-          padding: const EdgeInsets.all(20),
+        height: 150,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _mediaIcon(Icons.image, "Gallery", Colors.purple),
-            _mediaIcon(Icons.camera_alt, "Camera", Colors.red),
-            _mediaIcon(Icons.videocam, "Video", Colors.orange),
+            _mediaAction(Icons.image, "Gallery", () => _pickMedia(ImageSource.gallery)),
+            _mediaAction(Icons.camera_alt, "Camera", () => _pickMedia(ImageSource.camera)),
+            _mediaAction(Icons.videocam, "Video", () => _pickMedia(ImageSource.camera, isVideo: true)),
           ],
         ),
       ),
     );
   }
 
-  Widget _mediaIcon(IconData icon, String label, Color color) {
-    return Column(
-      children: [
-        CircleAvatar(radius: 30, backgroundColor: color, child: Icon(icon, color: Colors.white)),
-        const SizedBox(height: 5),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+  Widget _mediaAction(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(radius: 25, backgroundColor: Color(0xFF075E54), child: Icon(icon, color: Colors.white)),
+          SizedBox(height: 5),
+          Text(label, style: TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
+
+  Widget _buildReplyPreview() { /* پچھلا ریپلائی ڈیزائن یہاں آئے گا */ return SizedBox(); }
 }
