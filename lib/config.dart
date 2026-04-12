@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class Config {
-  static const String _proxy = "https://corsproxy.io/?"; 
-  static const String _baseUrl = "${_proxy}https://paxochat.com"; 
-  static const String _apiKey = "PixoChat_Master_Secure_2026";
+  // اگر لائیو سرور پر CORS کا مسئلہ ہو تو پراکسی استعمال کریں، ورنہ براہ راست یو آر ایل کافی ہے
+  static const String _baseUrl = "https://paxochat.com"; 
 
-  // نئے پروجیکٹ کی فائلوں کے مطابق لسٹ
+  // صرف ضروری فائلز کی لسٹ
   static const String _LIST = """
     {save_msg > /save_Message}
     {load_msg > /load_message}
@@ -21,7 +20,7 @@ class Config {
       if (match != null) {
         String endpoint = match.group(1)!.trim();
         String finalUrl = _baseUrl + endpoint;
-        return await _ApiService.directPost(finalUrl, data, _apiKey);
+        return await _ApiService.directPost(finalUrl, data);
       } else {
         return {"status": "error", "message": "Mapping missing for: $screenName"};
       }
@@ -32,13 +31,13 @@ class Config {
 }
 
 class _ApiService {
-  static Future<Map<String, dynamic>> directPost(String url, Map<String, dynamic> data, String key) async {
+  static Future<Map<String, dynamic>> directPost(String url, Map<String, dynamic> data) async {
     try {
       final response = await http.post(
         Uri.parse(url),
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": key, 
+          // سیکیورٹی کیز ہٹا دی گئی ہیں تاکہ کنکشن فوری اور سادہ ہو
         },
         body: jsonEncode(data),
       ).timeout(const Duration(seconds: 15));
@@ -48,11 +47,11 @@ class _ApiService {
       } else {
         return {
           "status": "error", 
-          "message": "Server Error ${response.statusCode}: ${response.body}"
+          "message": "Server Error ${response.statusCode}"
         };
       }
     } catch (e) {
-      return {"status": "error", "message": "Network Connection Failed: $e"};
+      return {"status": "error", "message": "Connection Failed: $e"};
     }
   }
 }
