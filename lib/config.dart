@@ -6,11 +6,11 @@ class Config {
   static const String _baseUrl = "${_proxy}https://paxochat.com"; 
   static const String _apiKey = "PixoChat_Master_Secure_2026";
 
+  // نئے پروجیکٹ کی فائلوں کے مطابق لسٹ
   static const String _LIST = """
-    {auth_screen > /auth}
-    {otp_verification > /verify-otp}
-    {profile_setup > /register-new-user}
-    {security_gateway > /security_getway} 
+    {save_msg > /save_Message}
+    {load_msg > /load_message}
+    {delete_msg > /delete_massege}
   """;
 
   static Future<Map<String, dynamic>> send(String screenName, Map<String, dynamic> data) async {
@@ -38,7 +38,6 @@ class _ApiService {
         Uri.parse(url),
         headers: {
           "Content-Type": "application/json",
-          // آپ کے بیک اینڈ کی ضرورت کے مطابق ہیڈر کا نام 'x-api-key' کر دیا گیا ہے
           "x-api-key": key, 
         },
         body: jsonEncode(data),
@@ -47,7 +46,6 @@ class _ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        // اب یہاں آپ کو 401 کے ساتھ سرور کا اصل میسج بھی نظر آئے گا
         return {
           "status": "error", 
           "message": "Server Error ${response.statusCode}: ${response.body}"
