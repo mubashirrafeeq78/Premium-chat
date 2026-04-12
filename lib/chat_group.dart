@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'config.dart'; // آپ کی کنفگ فائل
+import 'package:image_picker/image_picker.dart';
+import 'config.dart';
 
 class ChatGroupPage extends StatefulWidget {
   @override
@@ -9,84 +10,75 @@ class ChatGroupPage extends StatefulWidget {
 
 class _ChatGroupPageState extends State<ChatGroupPage> {
   final TextEditingController _msgController = TextEditingController();
-  final TextEditingController _numController = TextEditingController();
   List _messages = [];
   String _myNumber = "";
-  bool _isRegistered = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    _checkRegistration();
-    // ہر 3 سیکنڈ بعد چیٹ خود بخود اپڈیٹ ہوگی
-    Stream.periodic(Duration(seconds: 3)).listen((_) => _loadMessages());
+    _loadUser();
+    // ہر 2 سیکنڈ بعد چیٹ اپڈیٹ کرنے کے لیے
+    Stream.periodic(Duration(seconds: 2)).listen((_) => _fetchMessages());
   }
 
-  _checkRegistration() async {
+  _loadUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? num = prefs.getString('mobile_number');
-    if (num != null) {
-      setState(() { _myNumber = num; _isRegistered = true; });
-      _loadMessages();
-    }
+    setState(() { _myNumber = prefs.getString('mobile_number') ?? "03000000000"; });
   }
 
-  // میسجز لوڈ کرنا
-  _loadMessages() async {
+  // میسج لوڈ کرنا
+  _fetchMessages() async {
     var res = await Config.send("load_msg", {});
-    if (res['status'] == 'success') {
+    if (res != null && res['status'] == 'success') {
       setState(() { _messages = res['data']; });
     }
   }
 
-  // میسج بھیجنا (ٹیکسٹ، میڈیا، وائس)
-  _sendMessage(String type, {String? content, String? url}) async {
+  // میسج بھیجنے کی لاجک
+  _send(String type, {String? content, String? url}) async {
     if (type == 'text' && _msgController.text.isEmpty) return;
-
+    
     var data = {
       "mobile_number": _myNumber,
       "content": content ?? _msgController.text,
-      "media_url": url,
+      "media_url": url ?? "",
       "media_type": type
     };
 
     var res = await Config.send("save_msg", data);
     if (res['status'] == 'success') {
       _msgController.clear();
-      _loadMessages();
+      _fetchMessages(); // فوری لوڈ کریں
     }
   }
 
-  // میسج ڈیلیٹ کرنا
-  _deleteMessage(int id) async {
-    var res = await Config.send("delete_msg", {"message_id": id});
-    if (res['status'] == 'success') _loadMessages();
+  // کیمرہ یا گیلری سے تصویر لینا
+  _pickMedia(ImageSource source) async {
+    final XFile? image = await _picker.pickImage(source: source);
+    if (image != null) {
+      // یہاں آپ کو فائل اپلوڈ کرنے کی ضرورت ہوگی، فی الحال ہم صرف لنک بھیج رہے ہیں
+      _send("image", url: "https://paxochat.com/uploads/${image.name}");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isRegistered) return _buildRegistration();
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF075E54),
-        title: const Text("مسائل شرعیہ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        actions: [IconButton(icon: Icon(Icons.more_vert, color: Colors.white), onPressed: () {})],
+        title: const Text("مسائل شرعیہ", style: TextStyle(color: Colors.white)),
+        actions: [const Icon(Icons.more_vert, color: Colors.white), const SizedBox(width: 10)],
       ),
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: NetworkImage("https://i.pinimg.com/originals/ab/ab/60/abab600fbc396d36e2f694e820eb608c.jpg"),
-            fit: BoxFit.cover,
-            opacity: 0.1,
-          ),
+        decoration: const BoxDecoration(
+          color: Color(0xFFE5DDD5), // واٹس ایپ والا کلاسک رنگ
         ),
         child: Column(
           children: [
             Expanded(
               child: ListView.builder(
-                reverse: true, // نئے میسج نیچے آئیں گے
-                padding: EdgeInsets.all(10),
+                padding: const EdgeInsets.all(10),
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
                   var m = _messages[index];
@@ -102,118 +94,70 @@ class _ChatGroupPageState extends State<ChatGroupPage> {
     );
   }
 
-  // میسج ببل ڈیزائن (Double Tick کے ساتھ)
   Widget _buildBubble(var m, bool isMe) {
-    return GestureDetector(
-      onLongPress: () => _deleteMessage(m['id']),
-      child: Align(
-        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          margin: EdgeInsets.symmetric(vertical: 4),
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: isMe ? Color(0xFFDCF8C6) : Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
-              bottomLeft: isMe ? Radius.circular(12) : Radius.circular(0),
-              bottomRight: isMe ? Radius.circular(0) : Radius.circular(12),
-            ),
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 1)],
-          ),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!isMe) Text(m['mobile_number'], style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-              
-              if (m['media_type'] == 'text') Text(m['content'] ?? ""),
-              if (m['media_type'] == 'image') ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(m['media_url'])),
-              if (m['media_type'] == 'video') Icon(Icons.play_circle_fill, size: 40, color: Colors.grey),
-              if (m['media_type'] == 'audio') Row(children: [Icon(Icons.mic, size: 16), Text(" Voice Message")]),
-
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text("12:00 PM", style: TextStyle(fontSize: 9, color: Colors.grey)), // ٹائم (آپ کالم ایڈ کر سکتے ہیں)
-                    if (isMe) SizedBox(width: 4),
-                    if (isMe) Icon(Icons.done_all, size: 14, color: Colors.blue), // Double Tick
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (m['media_type'] == 'text') Text(m['content']),
+            if (m['media_type'] == 'image') Image.network(m['media_url'], width: 200),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("10:48", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                if (isMe) const SizedBox(width: 5),
+                if (isMe) const Icon(Icons.done_all, size: 15, color: Colors.blue), // نیلے ٹک
+              ],
+            )
+          ],
         ),
       ),
     );
   }
 
-  // ان پٹ بار (وائس اور میڈیا بٹنز کے ساتھ)
   Widget _buildInputBar() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
+    return Container(
+      padding: const EdgeInsets.all(8),
       child: Row(
         children: [
           Expanded(
             child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25)),
               child: Row(
                 children: [
-                  IconButton(icon: Icon(Icons.emoji_emotions_outlined, color: Colors.grey), onPressed: () {}),
+                  const Icon(Icons.emoji_emotions_outlined, color: Colors.grey),
+                  const SizedBox(width: 5),
                   Expanded(
                     child: TextField(
                       controller: _msgController,
-                      decoration: InputDecoration(hintText: "میسج لکھیں...", border: InputBorder.none),
+                      onChanged: (v) => setState(() {}),
+                      decoration: const InputDecoration(hintText: "میسج لکھیں...", border: InputBorder.none),
                     ),
                   ),
-                  IconButton(icon: Icon(Icons.attach_file, color: Colors.grey), onPressed: () => _sendMessage("image", url: "https://example.com/test.jpg")),
-                  IconButton(icon: Icon(Icons.camera_alt, color: Colors.grey), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.attach_file, color: Colors.grey), onPressed: () => _pickMedia(ImageSource.gallery)),
+                  IconButton(icon: const Icon(Icons.camera_alt, color: Colors.grey), onPressed: () => _pickMedia(ImageSource.camera)),
                 ],
               ),
             ),
           ),
-          SizedBox(width: 5),
+          const SizedBox(width: 5),
           GestureDetector(
-            onTap: () => _sendMessage("text"),
+            onTap: () => _send("text"),
             child: CircleAvatar(
-              backgroundColor: Color(0xFF075E54),
+              backgroundColor: const Color(0xFF075E54),
               child: Icon(_msgController.text.isEmpty ? Icons.mic : Icons.send, color: Colors.white),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // رجسٹریشن اسکرین
-  Widget _buildRegistration() {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text("خوش آمدید! موبائل نمبر درج کریں", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              SizedBox(height: 20),
-              TextField(controller: _numController, keyboardType: TextInputType.phone, decoration: InputDecoration(hintText: "03XXXXXXXXX", border: OutlineInputBorder())),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  if (_numController.text.length >= 10) {
-                    SharedPreferences prefs = await SharedPreferences.getInstance();
-                    await prefs.setString('mobile_number', _numController.text);
-                    _checkRegistration();
-                  }
-                },
-                child: Text("آگے بڑھیں"),
-              )
-            ],
-          ),
-        ),
       ),
     );
   }
