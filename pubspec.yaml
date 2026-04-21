@@ -5,18 +5,18 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  # یہاں ہم نے ورژن 3.5.0 کر دیا ہے تاکہ لیٹسٹ لائبریریز سپورٹ ہوں
-  sdk: '>=3.5.0 <4.0.0'
+  # یہاں ہم نے 3.4.0 کر دیا ہے تاکہ آپ کے کمپیوٹر پر ایرر نہ آئے
+  sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
   cupertino_icons: ^1.0.6
-  # یہ لیٹسٹ ورژنز ہیں جو کیمرہ اور مائیکروفون کے لیے بہترین ہیں
-  webview_flutter: ^4.10.0
-  webview_flutter_android: ^4.0.0
-  webview_flutter_wkwebview: ^3.15.0
+  # یہ ورژنز آپ کے موجودہ فلٹر ورژن کے ساتھ بالکل مطابقت رکھتے ہیں
+  webview_flutter: 4.8.0 
+  webview_flutter_android: 3.16.8
+  webview_flutter_wkwebview: 3.13.0
   
   # پرمیشن ہینڈلر
   permission_handler: ^11.3.1
