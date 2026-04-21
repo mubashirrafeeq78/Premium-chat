@@ -18,7 +18,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.22.0"
+          # ہم نے اسے 3.24.0 کر دیا ہے تاکہ Dart 3.5 کا مسئلہ حل ہو جائے
+          flutter-version: "3.24.0"
           channel: 'stable'
 
       - name: Install dependencies
