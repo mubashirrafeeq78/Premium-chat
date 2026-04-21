@@ -22,7 +22,7 @@ class PremiumWebView extends StatefulWidget {
 class _PremiumWebViewState extends State<PremiumWebView> {
   late final WebViewController _controller;
   bool _isLoading = true;
-  bool _hasError = false; // ایرر چیک کرنے کے لیے
+  bool _isFirstLoadDone = false; // یہ چیک کرے گا کہ کیا پہلی بار لوڈنگ مکمل ہو گئی ہے
 
   @override
   void initState() {
@@ -57,32 +57,28 @@ class _PremiumWebViewState extends State<PremiumWebView> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-              _hasError = false; // نیا پیج شروع ہوتے ہی ایرر سٹیٹ ختم
-            });
-          },
-          onPageFinished: (String url) {
-            // اگر ایرر نہیں آیا تبھی لوڈنگ ختم کریں
-            if (!_hasError) {
+            // صرف تب لوڈنگ دکھائیں اگر پہلی بار لوڈ ہو رہا ہو
+            if (!_isFirstLoadDone) {
               setState(() {
-                _isLoading = false;
+                _isLoading = true;
               });
             }
           },
-          onWebResourceError: (WebResourceError error) {
+          onPageFinished: (String url) {
+            // جب ایک بار پیج لوڈ ہو جائے تو سب ختم
             setState(() {
-              _hasError = true;
-              _isLoading = true; // انٹرنیٹ نہ ہونے پر بھی سرکل گھومتا رہے گا
+              _isLoading = false;
+              _isFirstLoadDone = true; // اب دوبارہ کبھی لوڈنگ نہیں دکھائے گا
             });
-            // تھوڑی دیر بعد دوبارہ لوڈ کرنے کی کوشش کریں
-            Future.delayed(const Duration(seconds: 5), () {
-              _controller.reload();
-            });
+          },
+          onWebResourceError: (WebResourceError error) {
+            // یہاں سے ہم نے 'setState' اور 'reload' والا لاجک ہٹا دیا ہے
+            // تاکہ انٹرنیٹ جانے پر یوزر کو تنگ نہ کیا جائے اور سرکل نہ آئے
+            debugPrint("Web Resource Error: ${error.description}");
           },
         ),
       )
-      ..loadRequest(Uri.parse('https://lavenderblush-eagle-882875.hostingersite.com/chat_group.php'));
+      ..loadRequest(Uri.parse('https://lavenderblush-eagle-882875.hostingersite.com/dashboard.php'));
 
     if (controller.platform is AndroidWebViewController) {
       AndroidWebViewController.enableDebugging(true);
@@ -100,14 +96,10 @@ class _PremiumWebViewState extends State<PremiumWebView> {
       body: SafeArea(
         child: Stack(
           children: [
-            // اگر ایرر ہو تو ویب ویو کو چھپا دیں تاکہ سسٹم کا ڈیفالٹ ایرر پیج نظر نہ آئے
-            Opacity(
-              opacity: _hasError ? 0 : 1,
-              child: WebViewWidget(controller: _controller),
-            ),
+            WebViewWidget(controller: _controller),
             
-            // لوڈنگ سرکل - جب پیج لوڈ ہو رہا ہو یا انٹرنیٹ کا مسئلہ ہو
-            if (_isLoading || _hasError)
+            // لوڈنگ سرکل صرف تب نظر آئے گا جب پہلی بار فائل لوڈ ہو رہی ہو
+            if (_isLoading)
               const Center(
                 child: CircularProgressIndicator(
                   color: Colors.blue,
