@@ -12,12 +12,12 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.6
-  # Webview packages
-  webview_flutter: ^4.8.0
-  webview_flutter_android: ^3.16.0
-  webview_flutter_wkwebview: ^3.13.0
+  # Webview packages updated to latest versions
+  webview_flutter: ^4.10.0
+  webview_flutter_android: ^4.0.0
+  webview_flutter_wkwebview: ^3.15.0
   
-  # Permission handler added for Camera and Microphone
+  # Permission handler
   permission_handler: ^11.3.1
 
 dev_dependencies:
