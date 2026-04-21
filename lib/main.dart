@@ -22,7 +22,7 @@ class PremiumWebView extends StatefulWidget {
 class _PremiumWebViewState extends State<PremiumWebView> {
   late final WebViewController _controller;
   bool _isLoading = true;
-  bool _isFirstLoadDone = false; // یہ چیک کرے گا کہ کیا پہلی بار لوڈنگ مکمل ہو گئی ہے
+  bool _isFirstLoadDone = false; 
 
   @override
   void initState() {
@@ -31,10 +31,12 @@ class _PremiumWebViewState extends State<PremiumWebView> {
     _initController();
   }
 
+  // کیمرہ، مائیکروفون اور میڈیا فائلز بھیجنے کے لیے بنیادی پرمیشنز
   Future<void> _requestPermissions() async {
     await [
       Permission.camera,
       Permission.microphone,
+      Permission.photos, // میڈیا فائلز سلیکٹ کرنے کے لیے
     ].request();
   }
 
@@ -57,7 +59,6 @@ class _PremiumWebViewState extends State<PremiumWebView> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            // صرف تب لوڈنگ دکھائیں اگر پہلی بار لوڈ ہو رہا ہو
             if (!_isFirstLoadDone) {
               setState(() {
                 _isLoading = true;
@@ -65,25 +66,30 @@ class _PremiumWebViewState extends State<PremiumWebView> {
             }
           },
           onPageFinished: (String url) {
-            // جب ایک بار پیج لوڈ ہو جائے تو سب ختم
             setState(() {
               _isLoading = false;
-              _isFirstLoadDone = true; // اب دوبارہ کبھی لوڈنگ نہیں دکھائے گا
+              _isFirstLoadDone = true; 
             });
           },
           onWebResourceError: (WebResourceError error) {
-            // یہاں سے ہم نے 'setState' اور 'reload' والا لاجک ہٹا دیا ہے
-            // تاکہ انٹرنیٹ جانے پر یوزر کو تنگ نہ کیا جائے اور سرکل نہ آئے
             debugPrint("Web Resource Error: ${error.description}");
           },
         ),
       )
       ..loadRequest(Uri.parse('https://lavenderblush-eagle-882875.hostingersite.com/dashboard.php'));
 
+    // اینڈرائیڈ کے لیے مخصوص سیٹنگز (کیمرہ اور وائس ریکارڈنگ کی اجازت)
     if (controller.platform is AndroidWebViewController) {
       AndroidWebViewController.enableDebugging(true);
       (controller.platform as AndroidWebViewController)
           .setMediaPlaybackRequiresUserGesture(false);
+
+      // یہ وہ حصہ ہے جو ویب سائٹ کو ہارڈویئر استعمال کرنے کی اجازت دیتا ہے
+      (controller.platform as AndroidWebViewController).setOnPermissionRequest(
+        (AndroidPermissionRequest request) async {
+          await request.grant();
+        },
+      );
     }
 
     _controller = controller;
@@ -98,7 +104,6 @@ class _PremiumWebViewState extends State<PremiumWebView> {
           children: [
             WebViewWidget(controller: _controller),
             
-            // لوڈنگ سرکل صرف تب نظر آئے گا جب پہلی بار فائل لوڈ ہو رہی ہو
             if (_isLoading)
               const Center(
                 child: CircularProgressIndicator(
