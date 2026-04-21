@@ -1,24 +1,18 @@
 name: NoorApp
 description: "A premium webview application."
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
-  # یہاں ورژن کی حد کم کر دی گئی ہے تاکہ گٹ ہب کا سسٹم اسے فوراً قبول کر لے
-  sdk: '>=3.2.0 <4.0.0'
+  sdk: '>=3.4.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-
   cupertino_icons: ^1.0.6
-  # یہ لیٹسٹ ورژنز ہیں جو آپ کے کوڈ کے مطابق ہیں
   webview_flutter: ^4.10.0
   webview_flutter_android: ^4.0.0
   webview_flutter_wkwebview: ^3.15.0
-  
-  # پرمیشن ہینڈلر
   permission_handler: ^11.3.1
 
 dev_dependencies:
