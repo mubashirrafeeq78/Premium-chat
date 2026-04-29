@@ -18,5 +18,6 @@ jobs:
 
       - name: Build APK
         run: |
+          flutter clean
           flutter pub get
           flutter build apk --release --target-platform android-arm64 --split-per-abi --android-skip-build-dependency-validation
