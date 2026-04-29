@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base href="/premium_chat/">
+  <base href="$FLUTTER_BASE_HREF">
+
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <title>Premium Chat</title>
 </head>
-<body style="background-color: #ffffff;">
+<body>
   <script src="flutter_bootstrap.js" async></script>
   <script>
-    window.addEventListener('load', function() {
-      // یہ اسکرپٹ زبردستی HTML رینڈرر لوڈ کرے گی تاکہ وائٹ اسکرین نہ آئے
+    window.addEventListener('load', function(ev) {
       _flutter.loader.loadEntrypoint({
         onEntrypointLoaded: function(engineInitializer) {
           engineInitializer.initializeEngine({
+            // یہاں ہم رینڈرر کو 'html' پر سیٹ کر رہے ہیں تاکہ وائٹ اسکرین نہ آئے
             renderer: "html"
           }).then(function(appRunner) {
             appRunner.runApp();
