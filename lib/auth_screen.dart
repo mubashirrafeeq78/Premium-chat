@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// فی الحال API اور Storage کی ضرورت نہیں ہے کیونکہ ہم صرف فرنٹ اینڈ کر رہے ہیں
-import 'routes.dart'; 
-import 'utils.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -22,17 +19,10 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  // فرنٹ اینڈ ٹیسٹنگ کے لیے اپڈیٹ شدہ فنکشن
   Future<void> _sendOtp() async {
     final phone = _phone.text.trim();
-    
-    // بنیادی ویلیڈیشن
-    if (phone.isEmpty) {
-      setState(() => _error = "Please enter mobile number");
-      return;
-    }
-    if (phone.length != 11) {
-      setState(() => _error = "Enter 11-digit mobile number");
+    if (phone.isEmpty || phone.length != 11) {
+      setState(() => _error = "Please enter a valid 11-digit number");
       return;
     }
 
@@ -41,193 +31,38 @@ class _AuthScreenState extends State<AuthScreen> {
       _error = "";
     });
 
-    // فرنٹ اینڈ ٹیسٹ کرنے کے لیے 1 سیکنڈ کا وقفہ (بغیر بیک اینڈ کے)
     await Future.delayed(const Duration(seconds: 1));
-
     if (!mounted) return;
     setState(() => _loading = false);
 
-    // سیدھا OTP اسکرین پر نیویگیٹ کریں
-    Navigator.pushNamed(context, AppRoutes.otp);
+    // یہاں ابھی ہم نے صرف پرنٹ کروایا ہے تاکہ ایرر نہ آئے
+    print("Go to OTP Screen"); 
   }
 
   @override
   Widget build(BuildContext context) {
-    final cardRadius = BorderRadius.circular(22);
-
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFDFF6F8), // light cyan
-              Color(0xFFDFF5E6), // light green
-              Color(0xFFF6F3C6), // light yellow
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.98),
-                    borderRadius: cardRadius,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 18,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Text("👋", style: TextStyle(fontSize: 28)),
-                          SizedBox(width: 8),
-                          Text(
-                            "Welcome!",
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF2E3A8C), // deep blue
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        "Enter your 11-digit mobile number to proceed.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          color: Color(0xFF7A7A7A),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Input
-                      TextField(
-                        controller: _phone,
-                        enabled: !_loading,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(11),
-                        ],
-                        decoration: InputDecoration(
-                          hintText: "e.g., 03XXXXXXXXX",
-                          filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.withOpacity(0.25)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.withOpacity(0.25)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: Color(0xFF1ED760), width: 1.4),
-                          ),
-                        ),
-                      ),
-
-                      if (_error.trim().isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red.withOpacity(0.25)),
-                          ),
-                          child: Text(
-                            _error,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 16),
-
-                      // Continue Button
-                      SizedBox(
-                        height: 54,
-                        width: double.infinity,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: const LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              colors: [
-                                Color(0xFF17D66B),
-                                Color(0xFF10C55E),
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF10C55E).withOpacity(0.25),
-                                blurRadius: 16,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _loading ? null : _sendOtp,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: _loading
-                                ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.4,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : const Text(
-                                    "Continue",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 6),
-                    ],
-                  ),
-                ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(18.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Welcome!", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _phone,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(11)],
+                decoration: const InputDecoration(hintText: "03XXXXXXXXX", border: OutlineInputBorder()),
               ),
-            ),
+              if (_error.isNotEmpty) Text(_error, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loading ? null : _sendOtp,
+                child: _loading ? const CircularProgressIndicator() : const Text("Continue"),
+              ),
+            ],
           ),
         ),
       ),
