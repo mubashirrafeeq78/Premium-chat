@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'auth.dart'; // یہاں ہم آپ کی نئی فائل کو امپورٹ کر رہے ہیں
+import 'auth_screen.dart'; // یہاں ہم آپ کی نئی فائل کو امپورٹ کر رہے ہیں
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
