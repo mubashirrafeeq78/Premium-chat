@@ -16,8 +16,16 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build APK
+      - name: Force Fix and Build
         run: |
+          # 1. کسی بھی پرانی یا ڈپلیکیٹ فائل کو زبردستی ختم کرنا
+          rm -f android/app/build.gradle.kts
+          rm -f android/build.gradle.kts
+          rm -f android/settings.gradle.kts
+          
+          # 2. فلٹر کلین اور پب گیٹ
           flutter clean
           flutter pub get
+          
+          # 3. بلڈ شروع کرنا (تمام رکاوٹوں کو نظر انداز کر کے)
           flutter build apk --release --target-platform android-arm64 --split-per-abi --android-skip-build-dependency-validation
