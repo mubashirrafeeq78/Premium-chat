@@ -14,14 +14,17 @@ jobs:
         with:
           channel: 'stable'
           
-      - name: Install dependencies
-        run: flutter pub get
+      - name: Clean and Install dependencies
+        run: |
+          flutter clean
+          flutter pub get
 
-      - name: Build Web
-        run: flutter build web --release --base-href "/premium_chat/"
+      - name: Build Web (Fresh Force Build)
+        run: flutter build web --release --base-href "/premium_chat/" --web-renderer html --no-tree-shake-icons
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
+          force_orphan: true
