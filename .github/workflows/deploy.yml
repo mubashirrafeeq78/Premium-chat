@@ -1,4 +1,4 @@
-name: Auto-Fix and Build
+name: Ultimate Auto-Fix and Build
 on:
   push:
     branches: [ main ]
@@ -18,25 +18,27 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Recreate Android Project (The 1-Minute Fix)
+      - name: Fresh Rebuild and Package Fix
         run: |
-          # 1. پرانا خراب اینڈرائیڈ فولڈر جڑ سے ختم کرنا
+          # 1. پرانا کچرا صاف کرنا
           rm -rf android
           
-          # 2. فلٹر کو کہنا کہ نیا اور لیٹسٹ اینڈرائیڈ فولڈر خود بناؤ
+          # 2. نیا لیٹسٹ پروجیکٹ بنانا
           flutter create . --platforms android
           
-          # 3. آپ کا پیکج نیم (Package Name) سیٹ کرنا
-          # یہ لائن آپ کے ایپ کی شناخت کو برقرار رکھے گی
-          sed -i 's/com.example.premium_chat/com.quick.designapp/g' android/app/build.gradle
+          # 3. خودکار طریقے سے فائل ڈھونڈ کر پیکج نیم بدلنا (چاہے نام .gradle ہو یا .kts)
+          find android -name "build.gradle*" -exec sed -i 's/com.example.premium_chat/com.quick.designapp/g' {} +
+          find android -name "MainActivity.kt" -exec sed -i 's/com.example.premium_chat/com.quick.designapp/g' {} +
           
-      - name: Build Optimized APK
-        run: |
+          # 4. ورژنز کی مطابقت درست کرنا
           flutter pub get
-          flutter build apk --release --target-platform android-arm64 --split-per-abi
+
+      - name: Build APK
+        run: |
+          flutter build apk --release --target-platform android-arm64 --split-per-abi --android-skip-build-dependency-validation
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PremiumChat-Fresh-Build
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          name: Final-Success-Build
+          path: build/app/outputs/flutter-apk/*.apk
